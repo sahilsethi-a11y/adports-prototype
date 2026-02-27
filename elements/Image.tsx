@@ -1,0 +1,40 @@
+import NextImage, { ImageProps } from "next/image";
+
+type PropsT = Omit<ImageProps, "placeholder">;
+
+const shimmer = (w?: number | `${number}`, h?: number | `${number}`) => `
+<svg width="${w}" height="${h}" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <linearGradient id="g">
+      <stop stop-color="#333" offset="20%" />
+      <stop stop-color="#222" offset="50%" />
+      <stop stop-color="#333" offset="70%" />
+    </linearGradient>
+  </defs>
+  <rect width="${w}" height="${h}" fill="#333" />
+  <rect id="r" width="${w}" height="${h}" fill="url(#g)" />
+  <animate xlink:href="#r" attributeName="x" from="-${w}" to="${w}" dur="1s" repeatCount="indefinite"  />
+</svg>`;
+
+const toBase64 = (str: string) => (globalThis.window === undefined ? Buffer.from(str).toString("base64") : globalThis.window.btoa(str));
+
+export default function Image({ height, width, fill = false, ...props }: Readonly<PropsT>) {
+    const hasDimensions = typeof width === "number" && typeof height === "number";
+    const placeholder = props.preload || !hasDimensions || fill
+        ? "empty"
+        : `data:image/svg+xml;base64,${toBase64(shimmer(width, height))}`;
+    const placeholderValue = placeholder === "empty" ? "empty" : "blur";
+    const blurDataURL = placeholder === "empty" ? undefined : placeholder;
+    const loading = props.loading ?? (props.priority || props.preload ? undefined : "lazy");
+
+    return (
+        <NextImage
+            {...props}
+            fill={fill}
+            {...(!fill && hasDimensions ? { height, width } : {})}
+            placeholder={placeholderValue}
+            blurDataURL={blurDataURL}
+            loading={loading}
+        />
+    );
+}
