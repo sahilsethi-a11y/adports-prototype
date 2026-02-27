@@ -791,6 +791,8 @@ export default function VehicleCardListing({
       color?: string;
       condition?: string;
       bodyType?: string;
+      marketType?: MarketMode;
+      colorOptions?: string[];
     };
   }) => {
     if (typeof window === "undefined") return;

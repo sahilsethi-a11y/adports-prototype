@@ -1,13 +1,21 @@
 "use client";
 
 import QuoteBuilderList, { type QuoteItem } from "@/components/buyer/QuoteBuilderList";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LOCAL_AUTH_STORAGE_KEY, type LocalAuthUser } from "@/lib/localAuth";
 import { getClientMarketMode, MARKET_MODE_STORAGE_KEY, normalizeMarketMode, scopedStorageKey, type MarketMode } from "@/lib/marketplace";
 import MarketplaceSwitch from "@/components/MarketplaceSwitch";
 
 export default function QuoteBuilderPage() {
+    return (
+        <Suspense fallback={<QuoteBuilderFallback />}>
+            <QuoteBuilderPageContent />
+        </Suspense>
+    );
+}
+
+function QuoteBuilderPageContent() {
     const searchParams = useSearchParams();
     const [items, setItems] = useState<QuoteItem[]>([]);
     const [isBuyer, setIsBuyer] = useState<boolean | null>(null);
@@ -105,6 +113,17 @@ export default function QuoteBuilderPage() {
             </div>
             <MarketplaceSwitch mode={marketMode} compact className="mb-6 max-w-sm" />
             <QuoteBuilderList list={items} marketMode={marketMode} />
+        </main>
+    );
+}
+
+function QuoteBuilderFallback() {
+    return (
+        <main className="container mx-auto px-4 lg:px-6 py-8">
+            <div className="mb-4">
+                <h1 className="text-3xl text-brand-blue">Quote Builder</h1>
+            </div>
+            <div className="p-4 border rounded-2xl border-stroke-light">Loading quote builder...</div>
         </main>
     );
 }

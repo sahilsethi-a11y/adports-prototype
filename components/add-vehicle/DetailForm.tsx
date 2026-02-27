@@ -23,6 +23,13 @@ type PropsT = {
 };
 
 const isEmptyObject = (obj: VehicleInfo) => Object.values(obj).every((v) => v == null || v === "" || v === 0);
+const NUMERIC_VEHICLE_FIELDS = ["mileage", "numberOfOwners", "availableQuantity", "unitPrice"] as const;
+const TEXT_VEHICLE_FIELDS = ["vin", "registrationNumber", "warrantyRemaining", "inspectionReportUrl", "color"] as const;
+type NumericVehicleField = (typeof NUMERIC_VEHICLE_FIELDS)[number];
+type TextVehicleField = (typeof TEXT_VEHICLE_FIELDS)[number];
+
+const isNumericVehicleField = (name: string): name is NumericVehicleField => (NUMERIC_VEHICLE_FIELDS as readonly string[]).includes(name);
+const isTextVehicleField = (name: string): name is TextVehicleField => (TEXT_VEHICLE_FIELDS as readonly string[]).includes(name);
 
 const SAMPLE_REPORT = "https://preprodblobadp.blob.core.windows.net/preprodblobadp-bucket/User-Documents%2Fc104e407-44ee-4fb4-918c-825f49fa277e_Stock%20Details%20Uploader.xlsx";
 
@@ -76,7 +83,7 @@ export default function DetailForm({ formState, errors, updateFormField, setStep
         const updatedVehicles = [...vehicles];
         const updateVehicle = { ...updatedVehicles[id] };
 
-        if (name === "mileage" || name === "numberOfOwners" || name === "availableQuantity" || name === "unitPrice") {
+        if (isNumericVehicleField(name)) {
             updateVehicle[name] = Number(value);
             if (name === "availableQuantity" && isZeroKm) {
                 const quantity = Math.max(1, Number(value) || 1);
@@ -90,8 +97,8 @@ export default function DetailForm({ formState, errors, updateFormField, setStep
                 }
                 updateVehicle.vin = (updateVehicle.vinList?.[0] || "").trim();
             }
-        } else {
-            updateVehicle[name as keyof Omit<VehicleInfo, "mileage" | "numberOfOwners">] = value;
+        } else if (isTextVehicleField(name)) {
+            updateVehicle[name] = value;
         }
 
         updatedVehicles[id] = updateVehicle;

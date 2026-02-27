@@ -21,6 +21,7 @@ import {
     featureFormSchema,
     fullListingSchema,
     imageFormSchema,
+    MarketType,
     Status,
     VehicleInfoSchema,
     type VehicleFormValues,
@@ -36,7 +37,7 @@ type PropsT = {
     filterData?: Record<string, unknown>;
     intialData?: FormState;
     step: string;
-    initialMarketType?: "second_hand" | "zero_km";
+    initialMarketType?: MarketType;
 };
 
 export type Step = {
@@ -50,7 +51,7 @@ export type VehicleInfo = z.infer<typeof VehicleInfoSchema>;
 type FormAction = { type: "UPDATE_FIELD"; field: keyof FormState; value: unknown } | { type: "SET_ALL"; fields: FormState } | { type: "RESET" };
 
 const initialFormState: FormState = {
-    marketType: "second_hand",
+    marketType: MarketType.SECOND_HAND,
     brand: "",
     model: "",
     variant: "",
@@ -104,7 +105,7 @@ const steps: Step[] = [
     { label: "Pricing & Options", icon: <DollerIcon className="h-4.5 w-4.5" /> },
 ];
 
-export default function VehicleForm({ topSection, brands, filterData, intialData, step: initialStep, initialMarketType = "second_hand" }: Readonly<PropsT>) {
+export default function VehicleForm({ topSection, brands, filterData, intialData, step: initialStep, initialMarketType = MarketType.SECOND_HAND }: Readonly<PropsT>) {
     const [step, setStep] = useState(initialStep ? Number(initialStep) : 1);
     const [formState, dispatch] = useReducer(formReducer, intialData ?? { ...initialFormState, marketType: initialMarketType });
     const [errors, setErrors] = useState<ZodTreeError>();
@@ -179,7 +180,7 @@ export default function VehicleForm({ topSection, brands, filterData, intialData
             status,
         };
 
-        if (payload.marketType === "zero_km") {
+        if (payload.marketType === MarketType.ZERO_KM) {
             const firstUnitPrice = payload.vehicles?.find((v) => Number(v?.unitPrice) > 0)?.unitPrice ?? 0;
             payload.price = Number(payload.price) > 0 ? Number(payload.price) : Number(firstUnitPrice) || 0;
         }

@@ -15,7 +15,7 @@ export type Content = {
     conversationId: string;
     userId: string;
     peerId: string;
-    itemId: number;
+    itemId: string | number;
     updatedAt: string;
     roleType: string;
     name: string;

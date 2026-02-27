@@ -49,6 +49,7 @@ export type Inventory = {
     views: string;
     currency: string;
     marketType?: MarketMode;
+    color?: string;
     colorOptions?: string[];
 };
 

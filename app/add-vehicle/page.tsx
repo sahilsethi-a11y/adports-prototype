@@ -3,6 +3,7 @@ import { ArrowLeftIcon } from "@/components/Icons";
 import Link from "next/link";
 import { getBrands, getFilters } from "@/lib/data";
 import { api } from "@/lib/api/server-request";
+import { MarketType } from "@/validation/vehicle-schema";
 
 const data = {
     title: "Add New Vehicle",
@@ -11,9 +12,9 @@ const data = {
 
 export default async function AddVehicle({
     searchParams,
-}: Readonly<{ searchParams: Promise<{ id: string; step: string; marketType?: "second_hand" | "zero_km" }> }>) {
+}: Readonly<{ searchParams: Promise<{ id: string; step: string; marketType?: MarketType }> }>) {
     const { id, step, marketType } = await searchParams;
-    const initialMarketType = marketType === "zero_km" ? "zero_km" : "second_hand";
+    const initialMarketType = marketType === MarketType.ZERO_KM ? MarketType.ZERO_KM : MarketType.SECOND_HAND;
 
     const res = api.get<{ data: FormState }>("/inventory/api/v1/inventory/getInventoryById", {
         params: {
