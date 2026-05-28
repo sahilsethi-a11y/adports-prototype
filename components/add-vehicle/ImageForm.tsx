@@ -9,6 +9,7 @@ import { ZodTreeError } from "@/validation/shared-schema";
 import { getJatoImageUrls } from "@/lib/jato";
 
 const MAX_IMAGE_COUNT = 10;
+const LOCAL_ZERO_KM_JATO_IMAGES = ["/seed-images/01a925d2f23d5cc8.jpg", "/seed-images/17fdcb05542259d5.jpg"];
 
 type PropsT = {
     formState: FormState;
@@ -22,6 +23,7 @@ export default function ImageForm({ formState, updateFormField, setStep, handleS
     const isZeroKm = formState.marketType === "zero_km";
     const images = formState.imageUrls || [];
     const mainImage = formState.mainImageUrl || "";
+    const hasChaboschiImages = !isZeroKm && formState.vinLookupStatus === "found" && images.length > 0;
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
@@ -59,6 +61,13 @@ export default function ImageForm({ formState, updateFormField, setStep, handleS
     };
 
     const applyManufacturerImages = () => {
+        if (isZeroKm) {
+            updateFormField("imageUrls", LOCAL_ZERO_KM_JATO_IMAGES);
+            updateFormField("mainImageUrl", LOCAL_ZERO_KM_JATO_IMAGES[0]);
+            message.success("Local manufacturer images loaded.");
+            return;
+        }
+
         const imageUrls = getJatoImageUrls({
             make: formState.brand,
             model: formState.model,
@@ -101,6 +110,7 @@ export default function ImageForm({ formState, updateFormField, setStep, handleS
                         </label>
                     </div>
                 </div>
+                {hasChaboschiImages ? <p className="mb-2 text-xs text-sky-700">Chaboschi vehicle images were preloaded from the VIN lookup. You can keep them or upload replacements.</p> : null}
                 {isZeroKm ? <p className="text-xs text-muted-foreground mb-2">For Zero KM, you can preload manufacturer images based on selected color and trim.</p> : null}
                 <div className="mb-2">
                     {errors?.properties?.mainImageUrl?.errors?.map((err: string) => (

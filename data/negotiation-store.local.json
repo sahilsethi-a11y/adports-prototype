@@ -1,0 +1,388 @@
+{
+  "cartsByConversation": {},
+  "ordersByConversation": {
+    "694a3d77719ef2622d1e750b_693a9da477ebbb16bcbbc985_69442affa04b5ae0f12d381b_5eb3d1c0-c362-481a-896d-cfed2e08129c": {
+      "conversationId": "694a3d77719ef2622d1e750b_693a9da477ebbb16bcbbc985_69442affa04b5ae0f12d381b_5eb3d1c0-c362-481a-896d-cfed2e08129c",
+      "buyerId": "694a3d77719ef2622d1e750b",
+      "sellerId": "693a9da477ebbb16bcbbc985",
+      "sellerCompany": "",
+      "vehicleId": "69442affa04b5ae0f12d381b",
+      "logisticsPartner": "UGR",
+      "items": [
+        {
+          "bucketKey": "nissan|sentra|s fwd|white|2022|used|sedan",
+          "name": "Nissan Sentra",
+          "totalUnits": 89,
+          "unitPrice": 4400,
+          "currency": "USD",
+          "discountPercent": 19,
+          "total": 371547,
+          "mainImageUrl": "https://preprodblobadp.blob.core.windows.net/preprodblobadp-bucket/User-Documents%2Fd7c36683-0fd3-4d5a-b1c0-7f5d81165ff6_1.jpg",
+          "brand": "Nissan",
+          "model": "Sentra",
+          "variant": "S Fwd",
+          "color": "White",
+          "year": 2022,
+          "condition": "Used",
+          "bodyType": "Sedan"
+        }
+      ],
+      "totals": {
+        "total": 371547,
+        "downpayment": 130041.45,
+        "pending": 241505.55
+      },
+      "selectedPort": "Yantai",
+      "destinationPort": "Jabel Ali",
+      "updatedAt": "2026-02-14T17:07:50.420Z",
+      "status": "confirmed-order",
+      "createdAt": "2026-02-14T17:07:57.066Z"
+    },
+    "694a3d77719ef2622d1e750b_693a9da477ebbb16bcbbc985_69442affa04b5ae0f12d381b_ded5a84a-a3b8-4244-af90-3f85315b09bf": {
+      "conversationId": "694a3d77719ef2622d1e750b_693a9da477ebbb16bcbbc985_69442affa04b5ae0f12d381b_ded5a84a-a3b8-4244-af90-3f85315b09bf",
+      "buyerId": "694a3d77719ef2622d1e750b",
+      "sellerId": "693a9da477ebbb16bcbbc985",
+      "sellerCompany": "",
+      "vehicleId": "69442affa04b5ae0f12d381b",
+      "logisticsPartner": "UGR",
+      "items": [
+        {
+          "bucketKey": "nissan|sentra|s fwd|white|2022|used|sedan",
+          "name": "Nissan Sentra",
+          "totalUnits": 89,
+          "unitPrice": 4400,
+          "currency": "USD",
+          "discountPercent": 7,
+          "total": 426591,
+          "mainImageUrl": "https://preprodblobadp.blob.core.windows.net/preprodblobadp-bucket/User-Documents%2Fd7c36683-0fd3-4d5a-b1c0-7f5d81165ff6_1.jpg",
+          "brand": "Nissan",
+          "model": "Sentra",
+          "variant": "S Fwd",
+          "color": "White",
+          "year": 2022,
+          "condition": "Used",
+          "bodyType": "Sedan"
+        },
+        {
+          "bucketKey": "toyota|corolla|1 5l gli at|white|2022|good|sedan",
+          "name": "Toyota Corolla",
+          "totalUnits": 4,
+          "unitPrice": 4600,
+          "currency": "USD",
+          "discountPercent": 10,
+          "total": 21150,
+          "mainImageUrl": "https://preprodblobadp.blob.core.windows.net/preprodblobadp-bucket/User-Documents%2F5fff539b-6a54-4248-9643-b7bba3aa1317_i1%20%281%29.jpeg",
+          "brand": "Toyota",
+          "model": "Corolla",
+          "variant": "1 5l Gli At",
+          "color": "White",
+          "year": 2022,
+          "condition": "Good",
+          "bodyType": "Sedan"
+        },
+        {
+          "bucketKey": "honda|crider|180turbo cvt comfort edition country vi|white|2022|good|sedan",
+          "name": "Honda Crider",
+          "totalUnits": 1,
+          "unitPrice": 5200,
+          "currency": "USD",
+          "discountPercent": 8,
+          "total": 4784,
+          "mainImageUrl": "https://preprodblobadp.blob.core.windows.net/preprodblobadp-bucket/User-Documents%2Fa4080d82-fe85-4557-8073-db0d90382492_crider.jpeg",
+          "brand": "Honda",
+          "model": "Crider",
+          "variant": "180Turbo CVT Comfort Edition Country VI",
+          "color": "White",
+          "year": 2022,
+          "condition": "Good",
+          "bodyType": "Sedan"
+        }
+      ],
+      "totals": {
+        "total": 452525,
+        "downpayment": 104080.75,
+        "pending": 348444.25
+      },
+      "selectedPort": "Ningbo",
+      "destinationPort": "Jabel Ali",
+      "updatedAt": "2026-02-14T17:10:15.860Z",
+      "status": "confirmed-order",
+      "createdAt": "2026-02-14T17:10:24.450Z"
+    },
+    "693fe99677ebbb16bcbbc98c_6916eedcde23746bf122d674_6992f2d64ec47a0b446ec1f2_a4c177f2-aa32-42bc-a12e-996b0721cc5a": {
+      "conversationId": "693fe99677ebbb16bcbbc98c_6916eedcde23746bf122d674_6992f2d64ec47a0b446ec1f2_a4c177f2-aa32-42bc-a12e-996b0721cc5a",
+      "buyerId": "693fe99677ebbb16bcbbc98c",
+      "sellerId": "6916eedcde23746bf122d674",
+      "sellerCompany": "",
+      "vehicleId": "6992f2d64ec47a0b446ec1f2",
+      "logisticsPartner": "UGR",
+      "items": [
+        {
+          "bucketKey": "maextro|s800|starwave premium (bev / erev)|pink|2022|excellent|sedan",
+          "name": "Maextro S800",
+          "totalUnits": 1,
+          "unitPrice": 150000,
+          "currency": "USD",
+          "discountPercent": 3,
+          "total": 145500,
+          "mainImageUrl": "https://preprodblobadp.blob.core.windows.net/preprodblobadp-bucket/User-Documents%2F5c88985d-43f4-4477-9fd3-dbdbd44c8358_Ekran%20g%C3%B6r%C3%BCnt%C3%BCs%C3%BC%202026-02-16%20132259.png",
+          "brand": "Maextro",
+          "model": "S800",
+          "variant": "Starwave Premium (BEV / EREV)",
+          "color": "Pink",
+          "year": 2022,
+          "condition": "Excellent",
+          "bodyType": "Sedan"
+        }
+      ],
+      "totals": {
+        "total": 145500,
+        "downpayment": 40740.00000000001,
+        "pending": 104760
+      },
+      "selectedPort": "Yantai",
+      "destinationPort": "Jabel Ali",
+      "updatedAt": "2026-02-16T10:47:09.247Z",
+      "status": "confirmed-order",
+      "createdAt": "2026-02-16T10:47:27.028Z"
+    },
+    "6954e299719ef2622d1e750c_693a9da477ebbb16bcbbc985_69442affa04b5ae0f12d380c_b2b69c92-e9c0-4785-9e00-16695aff662c": {
+      "conversationId": "6954e299719ef2622d1e750c_693a9da477ebbb16bcbbc985_69442affa04b5ae0f12d380c_b2b69c92-e9c0-4785-9e00-16695aff662c",
+      "buyerId": "6954e299719ef2622d1e750c",
+      "sellerId": "693a9da477ebbb16bcbbc985",
+      "sellerCompany": "",
+      "vehicleId": "69442affa04b5ae0f12d380c",
+      "logisticsPartner": "UGR",
+      "items": [
+        {
+          "bucketKey": "nissan|sentra|s fwd|white|2022|used|sedan",
+          "name": "Nissan Sentra",
+          "totalUnits": 3,
+          "unitPrice": 4400,
+          "currency": "USD",
+          "discountPercent": 30,
+          "total": 9240,
+          "mainImageUrl": "https://preprodblobadp.blob.core.windows.net/preprodblobadp-bucket/User-Documents%2F099272d1-92a5-4a43-a7f7-9053442b17ac_1.jpg",
+          "brand": "Nissan",
+          "model": "Sentra",
+          "variant": "S Fwd",
+          "color": "White",
+          "year": 2022,
+          "condition": "Used",
+          "bodyType": "Sedan"
+        }
+      ],
+      "totals": {
+        "total": 9240,
+        "downpayment": 9240,
+        "pending": 0
+      },
+      "selectedPort": "Yantai",
+      "destinationPort": "Jabel Ali",
+      "updatedAt": "2026-02-19T05:28:47.912Z",
+      "status": "confirmed-order",
+      "createdAt": "2026-02-19T05:28:54.218Z"
+    },
+    "6954e299719ef2622d1e750c_6926b4c7ecf236dddaca91bd_698aa9f14ec47a0b446ec1d1_2e252e3d-196b-4967-885b-0eb4ca19135f": {
+      "conversationId": "6954e299719ef2622d1e750c_6926b4c7ecf236dddaca91bd_698aa9f14ec47a0b446ec1d1_2e252e3d-196b-4967-885b-0eb4ca19135f",
+      "buyerId": "6954e299719ef2622d1e750c",
+      "sellerId": "6926b4c7ecf236dddaca91bd",
+      "sellerCompany": "",
+      "vehicleId": "698aa9f14ec47a0b446ec1d1",
+      "logisticsPartner": "UGR",
+      "items": [
+        {
+          "bucketKey": "maextro|s800|starlight premium (bev / erev)|black|2025|excellent|sedan",
+          "name": "Maextro S800",
+          "totalUnits": 1,
+          "unitPrice": 86300,
+          "currency": "USD",
+          "discountPercent": 17,
+          "total": 71629,
+          "mainImageUrl": "https://preprodblobadp.blob.core.windows.net/preprodblobadp-bucket/User-Documents%2F0b890c2b-bb64-4435-8e50-d8dabb56350d_DCP_de719abeed3ac543566c2794baadd436%7E2508x0.webp",
+          "brand": "Maextro",
+          "model": "S800",
+          "variant": "Starlight Premium (BEV / EREV)",
+          "color": "Black",
+          "year": 2025,
+          "condition": "Excellent",
+          "bodyType": "Sedan"
+        }
+      ],
+      "totals": {
+        "total": 71629,
+        "downpayment": 46558.85,
+        "pending": 25070.15
+      },
+      "selectedPort": "Ningbo",
+      "destinationPort": "Jabel Ali",
+      "updatedAt": "2026-02-19T06:54:37.032Z",
+      "status": "confirmed-order",
+      "createdAt": "2026-02-19T06:54:48.002Z"
+    },
+    "694a3d77719ef2622d1e750b_693a9da477ebbb16bcbbc985_69442affa04b5ae0f12d381b_8c1beb21-3b85-4215-b2e4-e42208549a4b": {
+      "conversationId": "694a3d77719ef2622d1e750b_693a9da477ebbb16bcbbc985_69442affa04b5ae0f12d381b_8c1beb21-3b85-4215-b2e4-e42208549a4b",
+      "buyerId": "694a3d77719ef2622d1e750b",
+      "sellerId": "693a9da477ebbb16bcbbc985",
+      "sellerCompany": "",
+      "vehicleId": "69442affa04b5ae0f12d381b",
+      "logisticsPartner": "UGR",
+      "items": [
+        {
+          "bucketKey": "nissan|sentra|s fwd|white|2022|used|sedan",
+          "name": "Nissan Sentra",
+          "totalUnits": 89,
+          "unitPrice": 4400,
+          "currency": "USD",
+          "discountPercent": 11,
+          "total": 408243,
+          "mainImageUrl": "https://preprodblobadp.blob.core.windows.net/preprodblobadp-bucket/User-Documents%2Fd7c36683-0fd3-4d5a-b1c0-7f5d81165ff6_1.jpg",
+          "brand": "Nissan",
+          "model": "Sentra",
+          "variant": "S Fwd",
+          "color": "White",
+          "year": 2022,
+          "condition": "Used",
+          "bodyType": "Sedan"
+        }
+      ],
+      "totals": {
+        "total": 408243,
+        "downpayment": 77566.17,
+        "pending": 330676.83
+      },
+      "selectedPort": "Yantai",
+      "destinationPort": "Jabel Ali",
+      "updatedAt": "2026-02-20T10:11:47.950Z",
+      "status": "confirmed-order",
+      "createdAt": "2026-02-20T10:11:55.251Z"
+    },
+    "6940b4f85d09c854ae2fa3e8_693a9da477ebbb16bcbbc985_69428baaa04b5ae0f12d3653_e3842161-c59b-46b0-9e80-30e7ecbe7bdc": {
+      "conversationId": "6940b4f85d09c854ae2fa3e8_693a9da477ebbb16bcbbc985_69428baaa04b5ae0f12d3653_e3842161-c59b-46b0-9e80-30e7ecbe7bdc",
+      "buyerId": "6940b4f85d09c854ae2fa3e8",
+      "sellerId": "693a9da477ebbb16bcbbc985",
+      "sellerCompany": "",
+      "vehicleId": "69428baaa04b5ae0f12d3653",
+      "logisticsPartner": "UGR",
+      "items": [
+        {
+          "bucketKey": "toyota|corolla|1 5l gli at|white|2022|good|sedan",
+          "name": "Toyota Corolla",
+          "totalUnits": 2,
+          "unitPrice": 6300,
+          "currency": "USD",
+          "discountPercent": 30,
+          "total": 8680,
+          "mainImageUrl": "https://preprodblobadp.blob.core.windows.net/preprodblobadp-bucket/User-Documents%2F8052f127-3f86-44d2-a46d-4fc9dc5b0936_1i.jpeg",
+          "brand": "Toyota",
+          "model": "Corolla",
+          "variant": "1 5l Gli At",
+          "color": "White",
+          "year": 2022,
+          "condition": "Good",
+          "bodyType": "Sedan"
+        }
+      ],
+      "totals": {
+        "total": 8680,
+        "downpayment": 868,
+        "pending": 7812
+      },
+      "selectedPort": "Ningbo",
+      "destinationPort": "Khalifa Port",
+      "updatedAt": "2026-02-21T08:35:44.902Z",
+      "status": "confirmed-order",
+      "createdAt": "2026-02-21T08:35:58.131Z"
+    },
+    "693fe99677ebbb16bcbbc98c_693a9da477ebbb16bcbbc985_69442b00a04b5ae0f12d381d_a135de2c-3c68-410c-b013-997292624e28": {
+      "conversationId": "693fe99677ebbb16bcbbc98c_693a9da477ebbb16bcbbc985_69442b00a04b5ae0f12d381d_a135de2c-3c68-410c-b013-997292624e28",
+      "buyerId": "693fe99677ebbb16bcbbc98c",
+      "sellerId": "693a9da477ebbb16bcbbc985",
+      "sellerCompany": "",
+      "vehicleId": "69442b00a04b5ae0f12d381d",
+      "logisticsPartner": "UGR",
+      "items": [
+        {
+          "bucketKey": "nissan|sentra|s fwd|white|2022|used|sedan",
+          "name": "Nissan Sentra",
+          "totalUnits": 4,
+          "unitPrice": 4400,
+          "currency": "USD",
+          "discountPercent": 3,
+          "total": 17266,
+          "mainImageUrl": "https://preprodblobadp.blob.core.windows.net/preprodblobadp-bucket/User-Documents%2F5d31f001-47cd-49fc-93a7-db6dadb1a83d_1.jpg",
+          "brand": "Nissan",
+          "model": "Sentra",
+          "variant": "S Fwd",
+          "color": "White",
+          "year": 2022,
+          "condition": "Used",
+          "bodyType": "Sedan"
+        }
+      ],
+      "totals": {
+        "total": 17266,
+        "downpayment": 2244.58,
+        "pending": 15021.42
+      },
+      "selectedPort": "Ningbo",
+      "destinationPort": "Jabel Ali",
+      "updatedAt": "2026-02-21T11:26:43.591Z",
+      "status": "confirmed-order",
+      "createdAt": "2026-02-21T11:27:00.072Z"
+    },
+    "local-buyer-001_693a9da477ebbb16bcbbc985_69428baaa04b5ae0f12d3651_second_hand_2384e04a-64ff-4d32-b21a-3cebfd30773a": {
+      "conversationId": "local-buyer-001_693a9da477ebbb16bcbbc985_69428baaa04b5ae0f12d3651_second_hand_2384e04a-64ff-4d32-b21a-3cebfd30773a",
+      "buyerId": "local-buyer-001",
+      "sellerId": "693a9da477ebbb16bcbbc985",
+      "sellerCompany": "",
+      "vehicleId": "69428baaa04b5ae0f12d3651",
+      "logisticsPartner": "UGR",
+      "items": [
+        {
+          "bucketKey": "toyota|corolla|1 5l gli at|white|2022|good|sedan",
+          "name": "Toyota Corolla",
+          "totalUnits": 4,
+          "unitPrice": 6500,
+          "currency": "USD",
+          "discountPercent": 0,
+          "total": 23500,
+          "mainImageUrl": "/seed-images/336036b24e129b33.jpg",
+          "brand": "Toyota",
+          "model": "Corolla",
+          "variant": "1 5l Gli At",
+          "year": 2022,
+          "condition": "Good",
+          "bodyType": "Sedan"
+        },
+        {
+          "bucketKey": "toyota|corolla|1 5l gli at|white|2021|good|sedan",
+          "name": "Toyota Corolla",
+          "totalUnits": 2,
+          "unitPrice": 6780,
+          "currency": "USD",
+          "discountPercent": 0,
+          "total": 14080,
+          "mainImageUrl": "/seed-images/46ce3733407bdc19.png",
+          "brand": "Toyota",
+          "model": "Corolla",
+          "variant": "1 5l Gli At",
+          "year": 2021,
+          "condition": "Good",
+          "bodyType": "Sedan"
+        }
+      ],
+      "totals": {
+        "total": 37580,
+        "downpayment": 3758,
+        "pending": 33822
+      },
+      "selectedPort": "Zayed Port",
+      "incoterm": "FOB",
+      "destinationPort": "Jabel Ali",
+      "updatedAt": "2026-05-21T15:05:15.472Z",
+      "status": "confirmed-order",
+      "createdAt": "2026-05-21T15:05:17.509Z"
+    }
+  }
+}

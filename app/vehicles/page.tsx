@@ -3,7 +3,6 @@ import VehicleCardListing from "@/components/inventory-listing/VehicleCardListin
 import { getBrands, getFilters } from "@/lib/data";
 import fs from "fs/promises";
 import path from "path";
-import MarketplaceSwitch from "@/components/MarketplaceSwitch";
 import { normalizeMarketMode, type MarketMode } from "@/lib/marketplace";
 
 export type Content = {
@@ -132,7 +131,6 @@ export default async function VehicleListing({ searchParams }: Readonly<PageProp
 
     return (
         <main className="text-[#4a5565] container mx-auto px-4 lg:px-6 py-8">
-            <MarketplaceSwitch mode={marketMode} compact className="mb-3 max-w-sm" />
             <FilterBar
                 brandRes={brandRes}
                 filterRes={filterRes}

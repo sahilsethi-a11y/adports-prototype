@@ -3,9 +3,6 @@ import ShortList from "@/components/vehicle-details/ShortList";
 import { api } from "@/lib/api/server-request";
 import Link from "next/link";
 import Image from "@/elements/Image";
-import MarketplaceSwitch from "@/components/MarketplaceSwitch";
-import { cookies } from "next/headers";
-import { MARKET_MODE_COOKIE_KEY, normalizeMarketMode } from "@/lib/marketplace";
 
 type Data = {
     data: {
@@ -34,15 +31,7 @@ const emptyShortlist: Data["data"] = {
 };
 
 export default async function Shortlisted({
-    searchParams,
 }: Readonly<PageProps<"/buyer/shortlisted">>) {
-    const cookieStore = await cookies();
-    const querySearchParams = await searchParams;
-    const marketMode = normalizeMarketMode(
-        (querySearchParams as Record<string, string | undefined>)?.market ||
-            cookieStore.get(MARKET_MODE_COOKIE_KEY)?.value
-    );
-
     let data = emptyShortlist;
 
     try {
@@ -77,7 +66,6 @@ export default async function Shortlisted({
                     </span>
                 </div>
             </div>
-            <MarketplaceSwitch mode={marketMode} compact className="mb-3 max-w-sm" />
             {data.totalItems === 0 ? (
                 <div className="text-center py-12">
                     <HeartIcon className="h-16 w-16 text-gray-300 mb-4 mx-auto" />

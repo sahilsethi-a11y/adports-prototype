@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import NegotiationItemsSection from "./NegotiationItemsSection";
-import NegotiationQuotePanelLocal, { PORT_OPTIONS } from "./NegotiationQuotePanelLocal";
+import type { RfqResponseSummary } from "./NegotiationItemsSection";
+import NegotiationQuotePanelLocal, {
+    CIF_PORT_OPTIONS,
+    FOB_PORT_OPTIONS,
+    getDefaultRfqLineResponse,
+    type NegotiationIncoterm,
+    type RfqLineResponse,
+} from "./NegotiationQuotePanelLocal";
 import { type NegotiationInfo, type Message } from "./Conversation";
 import YourProposalSummary from "./YourProposalSummary";
 import Button from "@/elements/Button";
@@ -30,13 +37,21 @@ type Props = {
 
 // Type for submitted proposal
 type ActiveProposal = {
+    requestForQuote?: boolean;
+    rfqResponse?: boolean;
+    quotationCancelled?: boolean;
+    cancellationReason?: string;
     discountPercent: number;
     discountAmount: number;
     finalPrice: number;
+    incoterm: NegotiationIncoterm;
     downpaymentPercent: number;
     downpaymentAmount: number;
     remainingBalance: number;
     selectedPort: string;
+    orderPreparationTimeline?: string;
+    expectedDeliveryDate?: string;
+    offerValidity?: string;
     submittedAt: string;
     bucketName: string;
     bucketTotal: number;
@@ -92,7 +107,9 @@ export default function NegotiationClientWrapper({
     // ==========================================
     const [bucketDiscounts, setBucketDiscounts] = useState<Record<string, number>>({});
     const [downpaymentPercent, setDownpaymentPercent] = useState(10);
+    const [selectedIncoterm, setSelectedIncoterm] = useState<NegotiationIncoterm>("FOB");
     const [selectedPort, setSelectedPort] = useState("");
+    const [rfqLineResponses, setRfqLineResponses] = useState<Record<string, RfqLineResponse>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submissionError, setSubmissionError] = useState<string | null>(null);
 
@@ -118,7 +135,14 @@ export default function NegotiationClientWrapper({
     const normalizedRole = effectiveRole?.toLowerCase();
     const isBuyer = normalizedRole === "buyer";
     const isSeller = normalizedRole === "seller" || normalizedRole === "dealer";
-    const canEditDiscounts = isBuyer || isCountering;
+    const isInitialBuyerZeroKmRfq = isBuyer && marketMode === "zero_km" && !activeProposal && !isCountering;
+    const isSellerRfqResponseMode = isSeller && Boolean(activeProposal?.requestForQuote) && isCountering;
+    const isPerColorNegotiationMode =
+        marketMode === "zero_km" &&
+        !isInitialBuyerZeroKmRfq &&
+        !isSellerRfqResponseMode &&
+        Boolean(activeProposal?.rfqResponse);
+    const canEditDiscounts = isCountering ? !isSellerRfqResponseMode : isBuyer && !isInitialBuyerZeroKmRfq;
 
     const setStateFromProposal = useCallback((proposal: ActiveProposal) => {
         const nextDiscounts: Record<string, number> = {};
@@ -127,6 +151,7 @@ export default function NegotiationClientWrapper({
         }
         if (Object.keys(nextDiscounts).length > 0) setBucketDiscounts(nextDiscounts);
         if (proposal.downpaymentPercent) setDownpaymentPercent(proposal.downpaymentPercent);
+        if (proposal.incoterm) setSelectedIncoterm(proposal.incoterm);
         if (proposal.selectedPort) setSelectedPort(proposal.selectedPort);
     }, []);
 
@@ -168,12 +193,19 @@ export default function NegotiationClientWrapper({
 
     const handleSubmitProposal = useCallback(
         async (proposalData: {
+            rfqResponse?: boolean;
+            quotationCancelled?: boolean;
+            cancellationReason?: string;
             discountPercent: number;
             discountAmount: number;
             finalPrice: number;
+            incoterm: NegotiationIncoterm;
             downpaymentPercent: number;
             downpaymentAmount: number;
             remainingBalance: number;
+            orderPreparationTimeline?: string;
+            expectedDeliveryDate?: string;
+            offerValidity?: string;
             bucketTotal: number;
             bucketName: string;
             bucketSummaries: Array<{
@@ -204,13 +236,21 @@ export default function NegotiationClientWrapper({
                           ? "buyer_proposed"
                           : "seller_countered";
                 const proposal: ActiveProposal = {
+                    requestForQuote: isInitialBuyerZeroKmRfq,
+                    rfqResponse: activeProposal?.rfqResponse || proposalData.rfqResponse,
+                    quotationCancelled: proposalData.quotationCancelled,
+                    cancellationReason: proposalData.cancellationReason,
                     discountPercent: proposalData.discountPercent,
                     discountAmount: proposalData.discountAmount,
                     finalPrice: proposalData.finalPrice,
+                    incoterm: proposalData.incoterm,
                     downpaymentPercent: proposalData.downpaymentPercent,
                     downpaymentAmount: proposalData.downpaymentAmount,
                     remainingBalance: proposalData.remainingBalance,
                     selectedPort,
+                    orderPreparationTimeline: proposalData.orderPreparationTimeline,
+                    expectedDeliveryDate: proposalData.expectedDeliveryDate,
+                    offerValidity: proposalData.offerValidity,
                     submittedAt: new Date().toISOString(),
                     bucketName: proposalData.bucketName,
                     bucketTotal: proposalData.bucketTotal,
@@ -262,6 +302,9 @@ export default function NegotiationClientWrapper({
                 window.dispatchEvent(
                     new CustomEvent("proposalSubmitted", {
                         detail: {
+                            requestForQuote: isInitialBuyerZeroKmRfq,
+                            rfqResponse: proposalData.rfqResponse,
+                            quotationCancelled: proposalData.quotationCancelled,
                             discountPercent: proposalData.discountPercent,
                             finalPrice: proposalData.finalPrice,
                             downpaymentPercent: proposalData.downpaymentPercent,
@@ -280,7 +323,7 @@ export default function NegotiationClientWrapper({
                 setIsSubmitting(false);
             }
         },
-        [activeProposal, isBuyer, saveProposal, selectedPort, effectiveRole, sellerId, userId, vehicleId]
+        [activeProposal, isBuyer, isInitialBuyerZeroKmRfq, saveProposal, selectedPort, effectiveRole, sellerId, userId, vehicleId]
     );
 
     useEffect(() => {
@@ -311,42 +354,61 @@ export default function NegotiationClientWrapper({
     }, [conversationId, isCountering, setStateFromProposal]);
 
     useEffect(() => {
-        if (!selectedPort) {
-            setSelectedPort(PORT_OPTIONS[0]);
+        const nextOptions = selectedIncoterm === "CIF" ? CIF_PORT_OPTIONS : FOB_PORT_OPTIONS;
+        if (!selectedPort || !nextOptions.some((option) => option === selectedPort)) {
+            setSelectedPort(nextOptions[0]);
         }
-    }, [selectedPort]);
+    }, [selectedIncoterm, selectedPort]);
 
     useEffect(() => {
         if (typeof window === "undefined") return;
         if (!isSeller || !activeProposal || !conversationId) return;
         if (!activeProposal.bucketSummaries || activeProposal.bucketSummaries.length === 0) return;
         try {
-            const items = activeProposal.bucketSummaries.map((b) => {
-                const totalUnits = Number(b.totalUnits) || 0;
-                const bucketTotal = Number(b.total) || 0;
-                const unitPrice = totalUnits > 0 ? bucketTotal / totalUnits : Number(b.unitPrice) || 0;
-                return ({
-                id: `${conversationId}_${b.key}`,
-                name: b.name,
-                year: b.year ?? 0,
-                location: "",
-                quantity: totalUnits,
-                price: unitPrice,
-                currency: b.currency,
-                mainImageUrl: b.mainImageUrl || "",
-                sellerCompany: sellerName || "Seller",
-                sellerId: sellerId,
-                bucketKey: b.key,
-                isSelected: true,
-                brand: b.brand,
-                model: b.model,
-                variant: b.variant,
-                color: b.color,
-                condition: b.condition,
-                bodyType: b.bodyType,
-            });
-            });
             const scopedKey = `negotiationItems_${conversationId}`;
+            const rawExisting = window.localStorage.getItem(scopedKey);
+            const existingItems = rawExisting ? (JSON.parse(rawExisting) as Array<any>) : [];
+            const existingByKey = new Map<string, any>();
+
+            for (const item of existingItems) {
+                const itemKey = item?.lineKey || `${item?.id}-${item?.color || "default"}`;
+                existingByKey.set(itemKey, item);
+            }
+
+            const items = activeProposal.bucketSummaries.map((b) => {
+                const itemKey = String(b.key);
+                const existingItem = existingByKey.get(itemKey);
+
+                return {
+                    id: existingItem?.id || itemKey,
+                    lineKey: itemKey,
+                    name: b.name,
+                    year: b.year ?? existingItem?.year ?? 0,
+                    location: existingItem?.location || "",
+                    quantity: Number(existingItem?.quantity) || Number(b.totalUnits) || 0,
+                    price: Number(existingItem?.price) || Number(b.unitPrice) || 0,
+                    currency: b.currency,
+                    mainImageUrl: b.mainImageUrl || existingItem?.mainImageUrl || "",
+                    sellerCompany: sellerName || "Seller",
+                    sellerId: sellerId,
+                    bucketKey: [
+                        sellerId || "",
+                        b.brand || b.name,
+                        b.model || "",
+                        b.variant || "",
+                        b.year || "",
+                    ].join("|"),
+                    isSelected: true,
+                    marketType: marketMode,
+                    brand: b.brand || b.name,
+                    model: b.model || "",
+                    variant: b.variant || "",
+                    color: b.color,
+                    condition: b.condition,
+                    bodyType: b.bodyType,
+                };
+            });
+
             window.localStorage.setItem(scopedKey, JSON.stringify(items));
             window.dispatchEvent(new Event("quoteBuilderUpdated"));
         } catch {}
@@ -382,6 +444,33 @@ export default function NegotiationClientWrapper({
             }
         } catch {}
     }, [isBuyer, sellerId, sellerName, quoteItemsStorageKey, quoteIdsStorageKey, quoteSellerStorageKey, quoteSellerCompanyStorageKey, quoteVehicleCompanyStorageKey]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        if (!isSellerRfqResponseMode) {
+            setRfqLineResponses({});
+            return;
+        }
+
+        try {
+            const scopedKey = `negotiationItems_${conversationId}`;
+            const raw = window.localStorage.getItem(scopedKey);
+            const parsed = raw ? (JSON.parse(raw) as Array<any>) : [];
+            const scoped = parsed.filter((item) =>
+                sellerId ? item?.sellerId === sellerId : sellerName ? item?.sellerCompany === sellerName : true
+            );
+
+            const next: Record<string, RfqLineResponse> = {};
+            for (const item of scoped) {
+                const itemKey = item.lineKey || `${item.id}-${item.color || "default"}`;
+                next[itemKey] = getDefaultRfqLineResponse(item);
+            }
+
+            setRfqLineResponses(next);
+        } catch {
+            setRfqLineResponses({});
+        }
+    }, [conversationId, isSellerRfqResponseMode, sellerId, sellerName]);
 
     useEffect(() => {
         if (!showCartModal || !vehicleId) return;
@@ -422,9 +511,24 @@ export default function NegotiationClientWrapper({
 
     // Determine if UI should show locked/disabled state
     const isProposalSubmitted = Boolean(activeProposal) && !isCountering;
+    const rfqResponseSummaries = useMemo<Record<string, RfqResponseSummary>>(() => {
+        if (!activeProposal?.rfqResponse || activeProposal.quotationCancelled) return {};
+
+        const next: Record<string, RfqResponseSummary> = {};
+        for (const bucket of activeProposal.bucketSummaries ?? []) {
+            next[bucket.key] = {
+                totalUnits: Number(bucket.totalUnits) || 0,
+                unitPrice: Number(bucket.unitPrice) || 0,
+                total: Number(bucket.total) || 0,
+                currency: bucket.currency,
+            };
+        }
+        return next;
+    }, [activeProposal]);
 
     const canAccept = useMemo(() => {
         if (!activeProposal) return false;
+        if (activeProposal.requestForQuote) return false;
         if (isSeller && (activeProposal.status === "buyer_proposed" || activeProposal.status === "buyer_countered")) return true;
         if (isBuyer && activeProposal.status === "seller_countered") return true;
         return false;
@@ -488,6 +592,7 @@ export default function NegotiationClientWrapper({
                         pending: activeProposal.remainingBalance,
                     },
                     selectedPort: activeProposal.selectedPort,
+                    incoterm: activeProposal.incoterm,
                     destinationPort: logisticsPartner === "UGR" ? destinationPort : undefined,
                     updatedAt: new Date().toISOString(),
                 };
@@ -517,6 +622,11 @@ export default function NegotiationClientWrapper({
                     isLocked={isProposalSubmitted}
                     conversationId={conversationId}
                     marketMode={marketMode}
+                    isSellerRfqResponseMode={isSellerRfqResponseMode}
+                    rfqLineResponses={rfqLineResponses}
+                    onRfqLineResponsesChange={setRfqLineResponses}
+                    rfqResponseSummaries={rfqResponseSummaries}
+                    isPerColorNegotiationMode={isPerColorNegotiationMode}
                 />
 
                 {/* Conversation */}
@@ -591,7 +701,7 @@ export default function NegotiationClientWrapper({
                         <h3 className="text-sm font-semibold text-gray-900 mb-3">Status</h3>
                     </div>
                     <p className="text-sm text-gray-600">
-                        {getStatusMessage(negotiationStatus, activeProposal?.status, isBuyer, isSeller)}
+                        {getStatusMessage(negotiationStatus, activeProposal?.status, isBuyer, isSeller, activeProposal)}
                     </p>
                     {activeProposal ? (
                         <div className="mt-4 flex gap-2">
@@ -601,16 +711,26 @@ export default function NegotiationClientWrapper({
                                 </Button>
                             ) : null}
                             {activeProposal.status !== "seller_accepted" ? (
-                                <Button size="sm" variant="outline" onClick={() => setIsCountering(true)}>
-                                    Counter offer
-                                </Button>
+                                (() => {
+                                    const isBuyerTurn = isBuyer && activeProposal.status === "seller_countered";
+                                    const isSellerTurn = isSeller && (activeProposal.status === "buyer_proposed" || activeProposal.status === "buyer_countered" || activeProposal.requestForQuote);
+
+                                    if (isBuyerTurn || isSellerTurn) {
+                                        return (
+                                            <Button size="sm" variant="outline" onClick={() => setIsCountering(true)}>
+                                                {activeProposal.requestForQuote && isSeller ? "Respond to RFQ" : "Counter offer"}
+                                            </Button>
+                                        );
+                                    }
+                                    return null;
+                                })()
                             ) : null}
                         </div>
                     ) : null}
                 </div>
 
                 {/* Show appropriate panel based on submission status */}
-                {!activeProposal || isCountering ? (
+                {((isBuyer && (!activeProposal || isCountering)) || (isSeller && (isSellerRfqResponseMode || isCountering))) ? (
                     <NegotiationQuotePanelLocal
                         sellerName={sellerName}
                         sellerId={sellerId}
@@ -618,6 +738,8 @@ export default function NegotiationClientWrapper({
                         bucketDiscounts={bucketDiscounts}
                         downpaymentPercent={downpaymentPercent}
                         onDownpaymentChange={setDownpaymentPercent}
+                        selectedIncoterm={selectedIncoterm}
+                        onIncotermChange={setSelectedIncoterm}
                         selectedPort={selectedPort}
                         onPortChange={setSelectedPort}
                         onSubmit={handleSubmitProposal}
@@ -625,7 +747,13 @@ export default function NegotiationClientWrapper({
                         submissionError={submissionError}
                         conversationId={conversationId}
                         marketMode={marketMode}
+                        isRequestQuoteMode={isInitialBuyerZeroKmRfq}
+                        isSellerRfqResponseMode={isSellerRfqResponseMode}
+                        submitLabel={isInitialBuyerZeroKmRfq ? "Request Quote" : "Submit Proposal"}
                         onFinalPriceDoubleTap={() => setIsRoleToggleEnabled((prev) => !prev)}
+                        rfqLineResponses={rfqLineResponses}
+                        rfqResponseSummaries={rfqResponseSummaries}
+                        isPerColorNegotiationMode={isPerColorNegotiationMode}
                     />
                 ) : activeProposal ? (
                     <>
@@ -637,7 +765,7 @@ export default function NegotiationClientWrapper({
                         />
                         {activeProposal.status === "seller_accepted" && isBuyer && vehicleId ? (
                             <div className="mt-4">
-                                <Button onClick={() => setShowCartModal(true)} className="w-full">
+                                <Button onClick={addNegotiationToCart} loading={cartLoading} className="w-full">
                                     Add to cart
                                 </Button>
                             </div>
@@ -677,7 +805,10 @@ export default function NegotiationClientWrapper({
                                         Buyer: <span className="font-medium">You</span>
                                     </div>
                                     <div className="text-xs text-gray-500">
-                                        Port of Loading: <span className="font-medium">{activeProposal.selectedPort}</span>
+                                        {activeProposal.incoterm === "CIF" ? "Port of Destination" : "Port of Loading"}: <span className="font-medium">{activeProposal.selectedPort}</span>
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                        Incoterm: <span className="font-medium">{activeProposal.incoterm}</span>
                                     </div>
                                     {logisticsPartner === "UGR" ? (
                                         <div className="text-xs text-gray-500">
@@ -777,12 +908,19 @@ export default function NegotiationClientWrapper({
     );
 }
 
-const getStatusMessage = (
+const getStatusMessage = ( // Added activeProposal parameter
     status?: string,
     proposalStatus?: ActiveProposal["status"],
     isBuyer?: boolean,
-    isSeller?: boolean
+    isSeller?: boolean,
+    activeProposal?: ActiveProposal | null
 ) => {
+    if (activeProposal?.quotationCancelled) return "Quotation cancelled by seller.";
+    if (activeProposal?.requestForQuote) {
+        if (isBuyer) return "Your quote request has been submitted. The seller will respond with a quotation.";
+        if (isSeller) return "Buyer requested a quote. Review the request and respond with your quotation.";
+    }
+
     if (proposalStatus === "seller_accepted") return "Proposal accepted. You can proceed with the next steps.";
     if (proposalStatus === "seller_countered") {
         return isBuyer ? "Seller countered. Review and respond." : "Waiting for buyer response.";
@@ -795,8 +933,9 @@ const getStatusMessage = (
     }
     const statusLower = status?.toLowerCase() || "";
     if (statusLower === "ongoing") {
-        if (isBuyer) return "Submit your proposal to start the negotiation.";
-        if (isSeller) return "Waiting for a proposal from the buyer.";
+        if (isBuyer) return "Submit your proposal to request a quote";
+        if (isSeller && !activeProposal) return "Waiting for RFQ from buyer."; // Specific change
+        if (isSeller) return "Waiting for a proposal from the buyer."; // Fallback for seller if activeProposal exists but isn't an RFQ
         return "Waiting for a proposal to be submitted.";
     }
     if (statusLower === "otppending") return "OTP verification pending. Check your email.";

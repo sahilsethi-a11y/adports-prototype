@@ -10,9 +10,17 @@ type MarketplaceSwitchProps = {
     showLabel?: boolean;
     required?: boolean;
     compact?: boolean;
+    designType?: "default" | "hero" | "topbar" | "hero-revamp" | "page-revamp";
 };
 
-export default function MarketplaceSwitch({ mode, className, showLabel = false, required = false, compact = false }: Readonly<MarketplaceSwitchProps>) {
+export default function MarketplaceSwitch({
+    mode,
+    className,
+    showLabel = false,
+    required = false,
+    compact = false,
+    designType = "default",
+}: Readonly<MarketplaceSwitchProps>) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -32,24 +40,122 @@ export default function MarketplaceSwitch({ mode, className, showLabel = false, 
     return (
         <div className={`${className ?? ""}`}>
             {compact ? (
-                <div className="inline-flex w-full items-center rounded-md border border-stroke-light bg-white p-1">
-                    <button
-                        type="button"
-                        onClick={() => switchMode("second_hand")}
-                        className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold transition-colors ${
-                            current === "second_hand" ? "bg-brand-blue text-white" : "text-gray-700 hover:bg-gray-100"
-                        }`}>
-                        Second-Hand
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => switchMode("zero_km")}
-                        className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold transition-colors ${
-                            current === "zero_km" ? "bg-brand-blue text-white" : "text-gray-700 hover:bg-gray-100"
-                        }`}>
-                        Zero KM
-                    </button>
-                </div>
+                designType === "page-revamp" ? (
+                    <div className="w-full rounded-2xl border border-stroke-light bg-gradient-to-b from-[#f7f9fc] to-white p-1.5 shadow-[0_12px_24px_-22px_rgba(14,30,56,0.55)]">
+                        <div className="grid grid-cols-2 gap-1.5">
+                            <button
+                                type="button"
+                                onClick={() => switchMode("second_hand")}
+                                className={`rounded-xl border px-3.5 py-2.5 text-left transition-all ${
+                                    current === "second_hand"
+                                        ? "border-[#D48B26] bg-[#fff9f0] text-brand-blue shadow-[0_8px_14px_-12px_rgba(0,0,0,0.6)]"
+                                        : "border-transparent bg-transparent text-[#4d5b75] hover:border-stroke-light hover:bg-white"
+                                }`}>
+                                <p className="text-sm font-semibold">Second-Hand</p>
+                                <p className="mt-0.5 text-[11px] text-[#6b768c]">Pre-owned</p>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => switchMode("zero_km")}
+                                className={`rounded-xl border px-3.5 py-2.5 text-left transition-all ${
+                                    current === "zero_km"
+                                        ? "border-[#4A93D8] bg-[#f2f8ff] text-brand-blue shadow-[0_8px_14px_-12px_rgba(0,0,0,0.6)]"
+                                        : "border-transparent bg-transparent text-[#4d5b75] hover:border-stroke-light hover:bg-white"
+                                }`}>
+                                <p className="text-sm font-semibold">Zero KM</p>
+                                <p className="mt-0.5 text-[11px] text-[#6b768c]">Brand-new</p>
+                            </button>
+                        </div>
+                    </div>
+                ) : designType === "hero-revamp" ? (
+                    <div className="w-full rounded-2xl border border-white/20 bg-white/10 p-2 shadow-[0_20px_45px_-30px_rgba(0,0,0,0.75)] backdrop-blur-md">
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => switchMode("second_hand")}
+                                className={`rounded-xl border px-4 py-3 text-left transition-all ${
+                                    current === "second_hand"
+                                        ? "border-[#D48B26] bg-white text-[#1d2d4a] shadow-[0_14px_22px_-16px_rgba(0,0,0,0.7)]"
+                                        : "border-white/20 bg-white/5 text-white/90 hover:bg-white/15"
+                                }`}>
+                                <p className="text-sm font-semibold">Second-Hand</p>
+                                <p className={`mt-0.5 text-xs ${current === "second_hand" ? "text-[#5d687d]" : "text-white/70"}`}>Pre-owned marketplace</p>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => switchMode("zero_km")}
+                                className={`rounded-xl border px-4 py-3 text-left transition-all ${
+                                    current === "zero_km"
+                                        ? "border-[#4A93D8] bg-white text-[#1d2d4a] shadow-[0_14px_22px_-16px_rgba(0,0,0,0.7)]"
+                                        : "border-white/20 bg-white/5 text-white/90 hover:bg-white/15"
+                                }`}>
+                                <p className="text-sm font-semibold">Zero KM</p>
+                                <p className={`mt-0.5 text-xs ${current === "zero_km" ? "text-[#5d687d]" : "text-white/70"}`}>Brand-new marketplace</p>
+                            </button>
+                        </div>
+                    </div>
+                ) : designType === "topbar" ? (
+                    <div className="inline-flex w-full items-center rounded-full border border-white/25 bg-white/10 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] backdrop-blur-md">
+                        <button
+                            type="button"
+                            onClick={() => switchMode("second_hand")}
+                            className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition-all ${
+                                current === "second_hand"
+                                    ? "border border-[#d28a23] bg-white text-brand-blue shadow-[0_6px_18px_-12px_rgba(0,0,0,0.7)]"
+                                    : "border border-transparent text-white/90 hover:bg-white/15 hover:text-white"
+                            }`}>
+                            Second-Hand
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => switchMode("zero_km")}
+                            className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition-all ${
+                                current === "zero_km"
+                                    ? "border border-[#d28a23] bg-white text-brand-blue shadow-[0_6px_18px_-12px_rgba(0,0,0,0.7)]"
+                                    : "border border-transparent text-white/90 hover:bg-white/15 hover:text-white"
+                            }`}>
+                            Zero KM
+                        </button>
+                    </div>
+                ) : designType === "hero" ? (
+                    <div className="inline-flex w-full items-center rounded-full border border-stroke-light bg-white p-1 shadow-[0_2px_6px_rgba(15,23,42,0.12)]">
+                        <button
+                            type="button"
+                            onClick={() => switchMode("second_hand")}
+                            className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.04em] transition-colors ${
+                                current === "second_hand" ? "bg-brand-blue text-white" : "text-gray-700 hover:bg-gray-100"
+                            }`}>
+                            Second-Hand
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => switchMode("zero_km")}
+                            className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.04em] transition-colors ${
+                                current === "zero_km" ? "bg-brand-blue text-white" : "text-gray-700 hover:bg-gray-100"
+                            }`}>
+                            Zero KM
+                        </button>
+                    </div>
+                ) : (
+                    <div className="inline-flex w-full items-center rounded-md border border-stroke-light bg-white p-1">
+                        <button
+                            type="button"
+                            onClick={() => switchMode("second_hand")}
+                            className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold transition-colors ${
+                                current === "second_hand" ? "bg-brand-blue text-white" : "text-gray-700 hover:bg-gray-100"
+                            }`}>
+                            Second-Hand
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => switchMode("zero_km")}
+                            className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold transition-colors ${
+                                current === "zero_km" ? "bg-brand-blue text-white" : "text-gray-700 hover:bg-gray-100"
+                            }`}>
+                            Zero KM
+                        </button>
+                    </div>
+                )
             ) : null}
             {!compact ? (
                 <>

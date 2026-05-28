@@ -57,6 +57,9 @@ type SellerGroup = {
 };
 
 const buildBucketKey = (item: QuoteItem) => {
+    if (item.marketType === "zero_km") {
+        return [item.id, item.sellerId || "", item.brand || item.name, item.model || "", item.variant || "", item.year].join("|");
+    }
     return item.bucketKey || [item.name, item.year, item.location, item.price, item.currency].join("|");
 };
 
@@ -263,16 +266,20 @@ export default function QuoteBuilderList({ list = [], marketMode }: Readonly<{ l
                                     </span>
                                     <span className="font-medium">{bucket.totalUnits} units</span>
                                 </div>
-                                {bucket.items.map((item) => (
-                                    <QuoteCard
-                                        key={getItemIdentity(item)}
-                                        item={item}
-                                        itemIdentity={getItemIdentity(item)}
-                                        isZeroKm={marketMode === "zero_km"}
-                                        onRemove={handleRemoveItem}
-                                        onQuantityChange={updateQuantity}
-                                    />
-                                ))}
+                                {marketMode === "zero_km" ? (
+                                    <ZeroKmQuoteCard bucket={bucket} onRemove={handleRemoveItem} onQuantityChange={updateQuantity} />
+                                ) : (
+                                    bucket.items.map((item) => (
+                                        <QuoteCard
+                                            key={getItemIdentity(item)}
+                                            item={item}
+                                            itemIdentity={getItemIdentity(item)}
+                                            isZeroKm={false}
+                                            onRemove={handleRemoveItem}
+                                            onQuantityChange={updateQuantity}
+                                        />
+                                    ))
+                                )}
                             </div>
                         ))}
                     </div>
@@ -376,6 +383,111 @@ const QuoteCard = ({
                         <Button loading={loading} onClick={handleRemoveItem} size="sm" leftIcon={<DeleteIcon className="h-3 w-3" />} type="button" variant="danger">
                             Remove
                         </Button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const ZeroKmQuoteCard = ({
+    bucket,
+    onRemove,
+    onQuantityChange,
+}: {
+    bucket: Bucket;
+    onRemove: (itemIdentity: string) => void;
+    onQuantityChange: (itemIdentity: string, delta: number) => void;
+}) => {
+    const [loadingIdentity, setLoadingIdentity] = useState<string | null>(null);
+    const totalValue = bucket.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const unitPrices = Array.from(new Set(bucket.items.map((item) => item.price)));
+    const hasMixedUnitPrices = unitPrices.length > 1;
+
+    return (
+        <div className="text-foreground flex w-full bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden border border-stroke-light">
+            <div className="flex gap-4 p-4 w-full">
+                <div className="flex items-start gap-3 shrink-0">
+                    <div className="relative h-20 w-28 bg-gray-100 overflow-hidden rounded-lg">
+                        <Image src={bucket.items[0]?.mainImageUrl || ""} alt={bucket.name} height={80} width={112} className="h-20 w-28 object-cover" />
+                    </div>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                            <div className="text-sm font-medium text-gray-900 truncate">{bucket.name}</div>
+                            <div className="mt-1 text-xs text-gray-500 flex flex-wrap gap-x-3 gap-y-1">
+                                <span>
+                                    {bucket.year} • {bucket.location}
+                                </span>
+                                <span>Units: {bucket.totalUnits}</span>
+                                <span>Colors: {bucket.items.length}</span>
+                            </div>
+                        </div>
+
+                        <div className="shrink-0 text-right">
+                            <div className="text-base font-semibold flex gap-1 items-center text-gray-900 whitespace-nowrap leading-none">
+                                {formatPrice(totalValue, bucket.currency)} <PriceBadge />
+                            </div>
+                            <div className="text-[11px] text-gray-500 mt-1">
+                                {hasMixedUnitPrices ? "Per-color pricing varies" : `Unit price: ${formatPrice(bucket.items[0]?.price || 0, bucket.currency)}`}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                        {bucket.items.map((item) => {
+                            const itemIdentity = getItemIdentity(item);
+                            return (
+                                <div key={itemIdentity} className="flex items-center justify-between gap-3 rounded-lg border border-stroke-light bg-gray-50 px-3 py-2">
+                                    <div className="min-w-0">
+                                        <div className="text-xs font-medium text-gray-900">Color: {item.color || "N/A"}</div>
+                                        <div className="text-[11px] text-gray-500">
+                                            {formatPrice(item.price * item.quantity, item.currency)}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-[11px] text-gray-500 whitespace-nowrap">
+                                            Indicative unit price: {formatPrice(item.price, item.currency)}
+                                        </div>
+                                        <div className="inline-flex items-center rounded-md border border-stroke-light overflow-hidden">
+                                            <button
+                                                type="button"
+                                                className="h-8 w-8 text-sm hover:bg-gray-50"
+                                                onClick={() => onQuantityChange(itemIdentity, -1)}
+                                            >
+                                                -
+                                            </button>
+                                            <span className="h-8 min-w-8 px-2 text-xs flex items-center justify-center border-x border-stroke-light">
+                                                {item.quantity}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                className="h-8 w-8 text-sm hover:bg-gray-50"
+                                                onClick={() => onQuantityChange(itemIdentity, 1)}
+                                            >
+                                                +
+                                            </button>
+                                        </div>
+                                        <Button
+                                            loading={loadingIdentity === itemIdentity}
+                                            onClick={() => {
+                                                setLoadingIdentity(itemIdentity);
+                                                onRemove(itemIdentity);
+                                                setLoadingIdentity(null);
+                                            }}
+                                            size="sm"
+                                            leftIcon={<DeleteIcon className="h-3 w-3" />}
+                                            type="button"
+                                            variant="danger"
+                                        >
+                                            Remove
+                                        </Button>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>

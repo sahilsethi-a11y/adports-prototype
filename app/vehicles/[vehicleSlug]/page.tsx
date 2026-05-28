@@ -13,6 +13,7 @@ import Button from "@/elements/Button";
 import { formatPrice } from "@/lib/utils";
 import { normalizeMarketMode } from "@/lib/marketplace";
 import ZeroKmQuantityCard from "@/components/vehicle-details/ZeroKmQuantityCard";
+import IndicativePriceBadge from "@/components/vehicle-details/IndicativePriceBadge";
 import fs from "fs/promises";
 import path from "path";
 import { notFound } from "next/navigation";
@@ -229,9 +230,12 @@ export default async function page({
                             <div className="w-full space-y-6 lg:sticky lg:top-24 self-start">
                                 <div className="bg-white rounded-xl border border-stroke-light p-7.5">
                                     <div className="flex items-center justify-between mb-4">
-                                        <div className="text-right flex gap-1 items-center">
-                                            <div className="text-[30px] font-bold text-brand-blue">{formatPrice(data.price, data.currency)}</div>
-                                            <PriceBadge />
+                                        <div className="text-right">
+                                            <div className="flex gap-1 items-center justify-end">
+                                                <div className="text-[30px] font-bold text-brand-blue">{formatPrice(data.price, data.currency)}</div>
+                                                <PriceBadge />
+                                                {marketMode === "zero_km" ? <IndicativePriceBadge /> : null}
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="text-[16px] text-[#4d4f53] mb-6">{data.name}</div>

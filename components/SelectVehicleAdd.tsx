@@ -1,14 +1,12 @@
 "use client";
 
 import { CheckCircleIcon, CloseIcon, DownloadIcon, FileIcon } from "@/components/Icons";
-import { downloadFile } from "@/lib/utils";
-import { ChangeEvent, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/elements/Button";
-import { api } from "@/lib/api/client-request";
-import message from "@/elements/message";
-import { FetchError } from "@/lib/api/shared";
 import { setClientMarketMode } from "@/lib/marketplace";
+import { downloadBulkTemplate } from "@/lib/bulk-upload";
+import { MarketType } from "@/validation/vehicle-schema";
 
 type PropsT = {
     onClose: () => void;
@@ -29,20 +27,16 @@ const data = {
             title: "CSV/Excel Upload",
             description: "Upload multiple vehicles at once using our template spreadsheet",
             benefits: ["Bulk upload support", "Fast data entry", "Error validation report", "Template provided"],
-            sampleUrl: "https://preprodblobadp.blob.core.windows.net/preprodblobadp-bucket/User-Documents%2F592fd126-60ed-47ac-8741-c2e885096ffc_Basic%20Details%20Uploader%20format.xlsx",
             note: "Best for: Multiple vehicles (10+)",
             type: "excel-based",
         },
     ],
-    note: "Regardless of the method you choose, all vehicle listings must include a mandatory inspection report (PDF) before they can be published.",
 };
 
 export default function SelectVehicleAdd({ onClose }: Readonly<PropsT>) {
     const [selectedType, setSelectedType] = useState("");
     const [marketType, setMarketType] = useState<"" | "second_hand" | "zero_km">("");
     const router = useRouter();
-    const [loading, setLoading] = useState(false);
-    const inputRef = useRef<HTMLInputElement>(null);
 
     const handleTypeSelection = () => {
         if (!marketType) return;
@@ -50,28 +44,7 @@ export default function SelectVehicleAdd({ onClose }: Readonly<PropsT>) {
         if (selectedType === "form-based") {
             router.push(`/add-vehicle?market=${marketType}&marketType=${marketType}`);
         } else if (selectedType === "excel-based") {
-            inputRef.current?.click();
-        }
-    };
-
-    const uploadVehicle = async (e: ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        try {
-            setLoading(true);
-            const formData = new FormData();
-            formData.set("file", file);
-            const res = await api.post<{ message: string }>("/inventory/api/v1/inventory/upload-vehicle", { body: formData });
-            message.success(res?.message);
-            setTimeout(() => {
-                router.push("/seller/inventory");
-                setLoading(false);
-                onClose();
-            }, 1000);
-        } catch (err) {
-            message.error((err as FetchError<{ message: string }>).response?.data?.message || "something went wrong");
-            setLoading(false);
-            onClose();
+            router.push(`/add-vehicle/bulk?marketType=${marketType}`);
         }
     };
 
@@ -147,17 +120,22 @@ export default function SelectVehicleAdd({ onClose }: Readonly<PropsT>) {
                                     </div>
                                 </div>
                             </div>
-                            {t.sampleUrl && (
-                                <div className="mt-4 flex justify-center">
+                            {t.type === "excel-based" && (
+                                <div className="mt-4 flex flex-col items-center gap-1">
                                     <button
-                                        onClick={() => downloadFile(t.sampleUrl)}
-                                        className="flex hover:bg-brand-blue hover:text-white transition-colors gap-4 text-brand-blue text-xs items-center border border-brand-blue rounded-md px-2 py-1">
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (marketType) downloadBulkTemplate(marketType as MarketType);
+                                        }}
+                                        disabled={!marketType}
+                                        title={!marketType ? "Select a vehicle type first" : undefined}
+                                        className="flex gap-2 text-brand-blue text-xs items-center border border-brand-blue rounded-md px-2 py-1 transition-colors hover:bg-brand-blue hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-brand-blue">
                                         <DownloadIcon className="h-3 w-3" />
-                                        Download Template
+                                        {marketType === "second_hand" ? "Download Used Vehicle Template" : marketType === "zero_km" ? "Download Zero KM Template" : "Download Template"}
                                     </button>
+                                    {!marketType && <p className="text-xs text-muted-foreground">Select a vehicle type to enable</p>}
                                 </div>
                             )}
-                            <input ref={inputRef} disabled={loading} name="stocks" type="file" onChange={uploadVehicle} className="sr-only" accept=".xls,.xlsx" />
                             <div className="mt-4 pt-4 border-t border-gray-200 text-center">
                                 <span className="text-xs text-gray-500 font-medium">{t.note}</span>
                             </div>
@@ -168,15 +146,9 @@ export default function SelectVehicleAdd({ onClose }: Readonly<PropsT>) {
                     <Button type="reset" onClick={onClose} variant="ghost">
                         Cancel
                     </Button>
-                    <Button loading={loading} type="submit" onClick={handleTypeSelection} disabled={!selectedType || !marketType} variant="primary">
+                    <Button type="submit" onClick={handleTypeSelection} disabled={!selectedType || !marketType} variant="primary">
                         Continue
                     </Button>
-                </div>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-                    <p className="text-sm text-gray-700">
-                        <span className="font-semibold text-brand-blue">Note: </span>
-                        {data.note}
-                    </p>
                 </div>
             </div>
         </div>

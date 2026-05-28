@@ -1,405 +1,521 @@
-import { AddIcon, ArrowLeftIcon, ArrowRightIcon, CloseIcon, DownloadIcon, EyeIcon, FileIcon, Shield, Spinner, UploadIcon } from "@/components/Icons";
-import { ChangeEvent, Dispatch, FormEvent, SetStateAction, useState } from "react";
+import { AlertCircleIcon, AddIcon, ArrowLeftIcon, ArrowRightIcon, CloseIcon, Shield } from "@/components/Icons";
+import { ChangeEvent, Dispatch, FormEvent, SetStateAction, useMemo, useState } from "react";
 import type { FormState, VehicleInfo } from "@/components/add-vehicle/VehicleForm";
 import Input from "@/elements/Input";
-import { uploadFile } from "@/lib/data";
 import Button from "@/elements/Button";
-import { downloadFile } from "@/lib/utils";
-import { api } from "@/lib/api/client-request";
 import message from "@/elements/message";
-import { FetchError } from "@/lib/api/shared";
 import { ZodTreeError } from "@/validation/shared-schema";
-import Select, { type Option } from "@/elements/Select";
+import Select from "@/elements/Select";
 import { Incoterm } from "@/validation/vehicle-schema";
 
 type PropsT = {
     formState: FormState;
     handleInputChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
-    updateFormField: (name: Partial<keyof FormState>, value: VehicleInfo[], errorPath?: (string | number)[]) => void;
+    updateFormField: (name: Partial<keyof FormState>, value: unknown, errorPath?: (string | number)[]) => void;
     setStep: Dispatch<SetStateAction<number>>;
     handleSubmit: (e: FormEvent) => void;
     errors?: ZodTreeError;
     filterData?: Record<string, unknown>;
 };
 
-const isEmptyObject = (obj: VehicleInfo) => Object.values(obj).every((v) => v == null || v === "" || v === 0);
-const NUMERIC_VEHICLE_FIELDS = ["mileage", "numberOfOwners", "availableQuantity", "unitPrice"] as const;
-const TEXT_VEHICLE_FIELDS = ["vin", "registrationNumber", "warrantyRemaining", "inspectionReportUrl", "color"] as const;
-type NumericVehicleField = (typeof NUMERIC_VEHICLE_FIELDS)[number];
-type TextVehicleField = (typeof TEXT_VEHICLE_FIELDS)[number];
+type NumericVehicleField = "mileage" | "numberOfOwners" | "availableQuantity" | "unitPrice" | "fobPrice" | "cifPrice";
+type TextVehicleField = "vin" | "registrationNumber" | "warrantyRemaining" | "inspectionReportUrl" | "color" | "fobPortOfLoading" | "cifPortOfDestination";
+
+const NUMERIC_VEHICLE_FIELDS: NumericVehicleField[] = ["mileage", "numberOfOwners", "availableQuantity", "unitPrice", "fobPrice", "cifPrice"];
+const TEXT_VEHICLE_FIELDS: TextVehicleField[] = ["vin", "registrationNumber", "warrantyRemaining", "inspectionReportUrl", "color", "fobPortOfLoading", "cifPortOfDestination"];
+const VIN_REGEX = /^[A-HJ-NPR-Z0-9]+$/;
 
 const isNumericVehicleField = (name: string): name is NumericVehicleField => (NUMERIC_VEHICLE_FIELDS as readonly string[]).includes(name);
 const isTextVehicleField = (name: string): name is TextVehicleField => (TEXT_VEHICLE_FIELDS as readonly string[]).includes(name);
 
-const SAMPLE_REPORT = "https://preprodblobadp.blob.core.windows.net/preprodblobadp-bucket/User-Documents%2Fc104e407-44ee-4fb4-918c-825f49fa277e_Stock%20Details%20Uploader.xlsx";
+const createVehicle = (isZeroKm: boolean, defaultColor?: string): VehicleInfo => ({
+    mileage: isZeroKm ? undefined : 0,
+    vin: "",
+    registrationNumber: "",
+    numberOfOwners: isZeroKm ? undefined : 0,
+    warrantyRemaining: "",
+    inspectionReportUrl: "",
+    color: defaultColor || "",
+    availableQuantity: undefined,
+    unitPrice: undefined,
+    incoterm: isZeroKm ? undefined : undefined,
+    vinList: [""],
+    fobPrice: undefined,
+    fobPortOfLoading: "",
+    cifPrice: undefined,
+    cifPortOfDestination: "",
+});
+
+const normalizeVin = (value: string) => value.trim().toUpperCase();
+const isValidVin = (vin: string) => vin.length === 17 && VIN_REGEX.test(vin);
+
+const syncLegacyPricing = (vehicle: VehicleInfo): VehicleInfo => {
+    if ((vehicle.fobPrice || 0) > 0) {
+        return { ...vehicle, incoterm: Incoterm.FOB, unitPrice: vehicle.fobPrice };
+    }
+    if ((vehicle.cifPrice || 0) > 0) {
+        return { ...vehicle, incoterm: Incoterm.CIF, unitPrice: vehicle.cifPrice };
+    }
+    return { ...vehicle, incoterm: undefined, unitPrice: undefined };
+};
+
+const normalizeVinListLength = (vehicle: VehicleInfo): VehicleInfo => {
+    const quantity = Number(vehicle.availableQuantity);
+    if (!quantity || quantity < 1) {
+        const currentVinList = vehicle.vinList && vehicle.vinList.length > 0 ? vehicle.vinList : [""];
+        return { ...vehicle, vinList: currentVinList, vin: normalizeVin(currentVinList[0] || "") };
+    }
+    const currentVinList = [...(vehicle.vinList || [])];
+    const nextVinList = currentVinList.length < quantity ? [...currentVinList, ...Array.from({ length: quantity - currentVinList.length }, () => "")] : currentVinList.slice(0, quantity);
+    return { ...vehicle, vinList: nextVinList, vin: normalizeVin(nextVinList[0] || "") };
+};
+
+const parseVinText = (value: string) =>
+    value
+        .split(/[\s,]+/)
+        .map(normalizeVin)
+        .filter(Boolean);
+
+const getVinStats = (vinList: string[]) => {
+    const seen = new Set<string>();
+    let valid = 0;
+    let duplicate = 0;
+    let invalid = 0;
+
+    for (const vinItem of vinList) {
+        const normalized = normalizeVin(vinItem || "");
+        if (!normalized) continue;
+        if (!isValidVin(normalized)) {
+            invalid += 1;
+            continue;
+        }
+        if (seen.has(normalized)) {
+            duplicate += 1;
+            continue;
+        }
+        seen.add(normalized);
+        valid += 1;
+    }
+
+    return { valid, duplicate, invalid };
+};
 
 export default function DetailForm({ formState, errors, updateFormField, setStep, handleSubmit, filterData }: Readonly<PropsT>) {
     const isZeroKm = formState.marketType === "zero_km";
+    const fetchedMileage = Number(formState.fetchedMileage) || 0;
     const colorOptions = ((filterData?.colors as { label: string; value: string }[]) ?? []).map((c) => ({ label: c.label || c.value, value: c.value }));
-    const incotermOptions: Option[] = Object.values(Incoterm).map((value) => ({ label: value, value }));
+    const vehicles = useMemo(() => (formState.vehicles?.length > 0 ? formState.vehicles : [createVehicle(isZeroKm, formState.color || "")]), [formState.color, formState.vehicles, isZeroKm]);
 
-    const vehicles =
-        formState.vehicles?.length > 0
-            ? formState.vehicles
-            : [
-                  {
-                      mileage: isZeroKm ? undefined : 0,
-                      vin: "",
-                      registrationNumber: "",
-                      numberOfOwners: isZeroKm ? undefined : 0,
-                      warrantyRemaining: "",
-                      inspectionReportUrl: "",
-                      color: formState.color || "",
-                      availableQuantity: isZeroKm ? 1 : undefined,
-                      unitPrice: isZeroKm ? undefined : undefined,
-                      incoterm: isZeroKm ? Incoterm.FOB : undefined,
-                      vinList: [""],
-                  },
-              ];
+    const [expandedVinSections, setExpandedVinSections] = useState<Record<number, boolean>>({});
+    const [vinEntryMode, setVinEntryMode] = useState<Record<number, "paste" | "manual" | null>>({});
+    const [vinPasteValues, setVinPasteValues] = useState<Record<number, string>>({});
 
-    const [loading, setLoading] = useState(false);
+    const globalZeroKmVinCounts = useMemo(() => {
+        const counts = new Map<string, number>();
+        if (!isZeroKm) return counts;
+        for (const vehicle of vehicles) {
+            for (const vinItem of vehicle.vinList || []) {
+                const normalized = normalizeVin(vinItem || "");
+                if (!normalized) continue;
+                counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+            }
+        }
+        return counts;
+    }, [isZeroKm, vehicles]);
 
     const appendVehicle = () => {
-        const newVehicle = {
-            mileage: isZeroKm ? undefined : 0,
-            vin: "",
-            registrationNumber: "",
-            numberOfOwners: isZeroKm ? undefined : 0,
-            warrantyRemaining: "",
-            inspectionReportUrl: "",
-            color: formState.color || "",
-            availableQuantity: isZeroKm ? 1 : undefined,
-            unitPrice: isZeroKm ? undefined : undefined,
-            incoterm: isZeroKm ? Incoterm.FOB : undefined,
-            vinList: [""],
-        };
-        const newVehicles = [...vehicles, newVehicle];
-        updateFormField("vehicles", newVehicles);
+        updateFormField("vehicles", [...vehicles, createVehicle(isZeroKm, formState.color || "")]);
     };
 
-    const handleInputChange = (e: ChangeEvent<HTMLInputElement>, id: number) => {
+    const updateVehicleAt = (index: number, updater: (vehicle: VehicleInfo) => VehicleInfo, errorPath?: (string | number)[]) => {
+        const updatedVehicles = [...vehicles];
+        updatedVehicles[index] = updater({ ...updatedVehicles[index] });
+        updateFormField("vehicles", updatedVehicles, errorPath);
+    };
+
+    const handleVehicleInputChange = (e: ChangeEvent<HTMLInputElement>, id: number) => {
         const { name, value } = e.target;
 
-        const updatedVehicles = [...vehicles];
-        const updateVehicle = { ...updatedVehicles[id] };
-
-        if (isNumericVehicleField(name)) {
-            updateVehicle[name] = Number(value);
-            if (name === "availableQuantity" && isZeroKm) {
-                const quantity = Math.max(1, Number(value) || 1);
-                const currentVinList = [...(updateVehicle.vinList || [])];
-                if (currentVinList.length < quantity) {
-                    updateVehicle.vinList = [...currentVinList, ...Array.from({ length: quantity - currentVinList.length }, () => "")];
-                } else if (currentVinList.length > quantity) {
-                    updateVehicle.vinList = currentVinList.slice(0, quantity);
-                } else {
-                    updateVehicle.vinList = currentVinList;
+        updateVehicleAt(
+            id,
+            (vehicle) => {
+                if (isNumericVehicleField(name)) {
+                    const nextNumericValue = value === "" ? undefined : Number(value);
+                    vehicle[name] = name === "mileage" && !isZeroKm && typeof nextNumericValue === "number" ? Math.max(nextNumericValue, fetchedMileage) : nextNumericValue;
+                    if (name === "availableQuantity" && isZeroKm) {
+                        vehicle = normalizeVinListLength(vehicle);
+                    }
+                    if (name === "fobPrice" || name === "cifPrice" || name === "unitPrice") {
+                        vehicle = syncLegacyPricing(vehicle);
+                    }
+                    return vehicle;
                 }
-                updateVehicle.vin = (updateVehicle.vinList?.[0] || "").trim();
-            }
-        } else if (isTextVehicleField(name)) {
-            updateVehicle[name] = value;
-        }
 
-        updatedVehicles[id] = updateVehicle;
-        updateFormField("vehicles", updatedVehicles, ["vehicles", id, name]);
+                if (isTextVehicleField(name)) {
+                    vehicle[name] = value;
+                    return vehicle;
+                }
+
+                return vehicle;
+            },
+            ["vehicles", id, name]
+        );
     };
 
-    const removeFile = (index: number) => {
-        const newVehicles = [...vehicles];
-        newVehicles[index] = {
-            ...newVehicles[index],
-            inspectionReportUrl: "",
-        };
-        updateFormField("vehicles", newVehicles, ["vehicles", index, "inspectionReportUrl"]);
-    };
+    const applyPastedVins = (index: number) => {
+        const configuredQuantity = Number(vehicles[index]?.availableQuantity);
+        const parsed = parseVinText(vinPasteValues[index] || "");
+        const targetLength = configuredQuantity > 0 ? configuredQuantity : Math.max(parsed.length, (vehicles[index]?.vinList || []).length, 1);
+        const trimmedToQuantity = parsed.slice(0, targetLength);
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, id: number) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        try {
-            const fileData = await uploadFile<{
-                data: { fileLocation: string };
-            }>(file);
+        updateVehicleAt(
+            index,
+            (vehicle) => {
+                const nextVinList = Array.from({ length: targetLength }, (_, vinIndex) => trimmedToQuantity[vinIndex] || "");
+                return {
+                    ...vehicle,
+                    vinList: nextVinList,
+                    vin: normalizeVin(nextVinList[0] || ""),
+                };
+            },
+            ["vehicles", index, "vinList"]
+        );
 
-            const newVehicles = [...vehicles];
-            newVehicles[id] = {
-                ...newVehicles[id],
-                inspectionReportUrl: fileData.data?.fileLocation,
-            };
+        setExpandedVinSections((prev) => ({ ...prev, [index]: true }));
+        setVinEntryMode((prev) => ({ ...prev, [index]: "paste" }));
 
-            updateFormField("vehicles", newVehicles, ["vehicles", id, "inspectionReportUrl"]);
-            message.success("File uploaded successfully");
-        } catch {
-            message.error("File upload failed. Please try again.");
+        if (configuredQuantity > 0 && parsed.length > targetLength) {
+            message.error(`Only the first ${targetLength} VINs were applied for this color configuration.`);
+        } else {
+            message.success("VINs added");
         }
     };
 
-    const uploadStocks = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        try {
-            setLoading(true);
-            const formData = new FormData();
-            formData.set("file", file);
-            const res = await api.post<{
-                data: { records: VehicleInfo[] };
-                message: string;
-            }>("/inventory/api/v1/inventory/uploadInventries", {
-                body: formData,
-            });
-
-            const newVehicles = [...vehicles.filter((i) => !isEmptyObject(i)), ...res.data.records];
-            updateFormField("vehicles", newVehicles);
-            message.success(res?.message);
-        } catch (err) {
-            message.error((err as FetchError<{ message: string }>).response?.data?.message || "something went wrong");
-        } finally {
-            setLoading(false);
-            // Reset the input so selecting the same file works again
-            e.target.value = "";
-        }
+    const formatMileage = (value?: number) => {
+        if (!value || value < 1) return "";
+        return `${value.toLocaleString()} kms`;
     };
 
     return (
         <form onSubmit={handleSubmit} noValidate>
             <div className="mb-4 flex items-center gap-4 justify-end">
                 <div className="me-auto">
-                    <h3 className="text-brand-blue">Vehicle Specifications</h3>
-                    <p className="text-sm text-muted-foreground">
-                        {isZeroKm ? "Add color-wise configurations with quantity, price and incoterm" : "Add multiple vehicles of the same model"}
-                    </p>
+                    <h3 className="text-brand-blue">{isZeroKm ? "Vehicle Specifications" : "Vehicle Details & Specifications"}</h3>
+                    <p className="text-sm text-muted-foreground">{isZeroKm ? "Add color-wise configurations with quantity and optional FOB/CIF pricing" : "Add the details for this single used-car listing"}</p>
                 </div>
-                {!isZeroKm ? (
-                    <>
-                        <Button type="button" variant="ghost" onClick={() => downloadFile(SAMPLE_REPORT)} leftIcon={<DownloadIcon className="h-3 w-3" />}>
-                            Download Template
-                        </Button>
-                        <label
-                            className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-all focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none border border-brand-blue text-gray-800 h-9 px-4 text-sm ${
-                                loading ? "opacity-50" : "hover:bg-brand-blue hover:text-white"
-                            }`}>
-                            {loading ? <Spinner className="h-4 w-4" /> : <UploadIcon className="h-4 w-4" />}
-                            Upload stock
-                            <input disabled={loading} name="stocks" type="file" onChange={uploadStocks} className="sr-only" accept=".xls,.xlsx" />
-                        </label>
-                    </>
+                {isZeroKm ? (
+                    <Button type="button" leftIcon={<AddIcon className="h-3.5 w-3.5" />} onClick={appendVehicle} variant="primary">
+                        Add Color Config
+                    </Button>
                 ) : null}
-                <Button type="button" leftIcon={<AddIcon className="h-3.5 w-3.5" />} onClick={appendVehicle} variant="primary">
-                    {isZeroKm ? "Add Color Config" : "Add Additional Stock"}
-                </Button>
             </div>
-            {vehicles.map((item, index) => (
-                <div key={item.id || index} className="border rounded-xl p-4 mb-6 border-stroke-light">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-brand-blue mb-4">Vehicle #{index + 1}</h3>
-                        {index > 0 && (
-                            <div className="mb-4 text-right">
-                                <Button
-                                    onClick={() => {
-                                        const newVehicles = vehicles.filter((_, i) => i !== index);
-                                        updateFormField("vehicles", newVehicles, ["vehicles", index]);
-                                    }}
-                                    variant="danger"
-                                    type="button"
-                                    className="bg-transparent hover:bg-destructive/10 text-destructive"
-                                    leftIcon={<CloseIcon />}>
-                                    Remove Vehicle
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {isZeroKm ? (
-                            <>
-                                <Select
-                                    label="Color"
-                                    required
-                                    name="color"
-                                    options={colorOptions}
-                                    value={item.color || ""}
-                                    onChange={(value) => {
-                                        const updatedVehicles = [...vehicles];
-                                        updatedVehicles[index] = { ...updatedVehicles[index], color: value };
-                                        updateFormField("vehicles", updatedVehicles, ["vehicles", index, "color"]);
-                                    }}
-                                    placeholder="Select color"
-                                    border="bg-input-background"
-                                    labelCls="text-sm font-medium"
-                                    errors={errors?.properties?.vehicles?.items?.[index]?.properties?.color?.errors}
-                                />
-                                <Input
-                                    label="Available Quantity"
-                                    type="number"
-                                    name="availableQuantity"
-                                    errors={errors?.properties?.vehicles?.items?.[index]?.properties?.availableQuantity?.errors}
-                                    value={item.availableQuantity || ""}
-                                    onChange={(e) => handleInputChange(e, index)}
-                                    placeholder="e.g., 25"
-                                    required
-                                />
-                                <Input
-                                    label="Unit Price"
-                                    type="number"
-                                    name="unitPrice"
-                                    errors={errors?.properties?.vehicles?.items?.[index]?.properties?.unitPrice?.errors}
-                                    value={item.unitPrice || ""}
-                                    onChange={(e) => handleInputChange(e, index)}
-                                    placeholder="e.g., 18000"
-                                    required
-                                />
-                                <Select
-                                    label="Incoterm"
-                                    required
-                                    name="incoterm"
-                                    options={incotermOptions}
-                                    value={item.incoterm || ""}
-                                    onChange={(value) => {
-                                        const updatedVehicles = [...vehicles];
-                                        updatedVehicles[index] = { ...updatedVehicles[index], incoterm: value as Incoterm };
-                                        updateFormField("vehicles", updatedVehicles, ["vehicles", index, "incoterm"]);
-                                    }}
-                                    placeholder="Select incoterm"
-                                    border="bg-input-background"
-                                    labelCls="text-sm font-medium"
-                                    errors={errors?.properties?.vehicles?.items?.[index]?.properties?.incoterm?.errors}
-                                />
-                            </>
-                        ) : (
-                            <Input
-                                label="mileage"
-                                type="number"
-                                name="mileage"
-                                errors={errors?.properties?.vehicles?.items?.[index]?.properties?.mileage?.errors}
-                                value={item.mileage || ""}
-                                onChange={(e) => handleInputChange(e, index)}
-                                placeholder="20"
-                                required
-                            />
-                        )}
-                        {!isZeroKm ? (
-                            <Input
-                                label="VIN"
-                                type="text"
-                                name="vin"
-                                errors={errors?.properties?.vehicles?.items?.[index]?.properties?.vin?.errors}
-                                value={item.vin || ""}
-                                onChange={(e) => handleInputChange(e, index)}
-                                placeholder="17-character VIN"
-                                required
-                            />
-                        ) : null}
-                        {!isZeroKm ? (
-                            <>
-                                <Input
-                                    required
-                                    label="Number of Owners"
-                                    type="number"
-                                    name="numberOfOwners"
-                                    errors={errors?.properties?.vehicles?.items?.[index]?.properties?.numberOfOwners?.errors}
-                                    value={item.numberOfOwners || ""}
-                                    onChange={(e) => handleInputChange(e, index)}
-                                    placeholder="eg. 2"
-                                />
-                                <Input
-                                    label="Warranty Remaining"
-                                    type="text"
-                                    name="warrantyRemaining"
-                                    errors={errors?.properties?.vehicles?.items?.[index]?.properties?.warrantyRemaining?.errors}
-                                    value={item.warrantyRemaining || ""}
-                                    onChange={(e) => handleInputChange(e, index)}
-                                    placeholder="e.g., 2 years, Expired"
-                                />
-                            </>
-                        ) : null}
-                    </div>
-                    {isZeroKm ? (
-                        <div className="mt-4">
-                            <p className="text-sm font-medium text-gray-800 mb-2">VINs (Optional) - add one per unit quantity</p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {Array.from({ length: Math.max(1, Number(item.availableQuantity) || 1) }).map((_, vinIndex) => (
-                                    <Input
-                                        key={`vin-${index}-${vinIndex}`}
-                                        label={`VIN ${vinIndex + 1}`}
-                                        type="text"
-                                        name={`vinList-${vinIndex}`}
-                                        value={(item.vinList || [])[vinIndex] || ""}
-                                        onChange={(e) => {
-                                            const updatedVehicles = [...vehicles];
-                                            const vinList = [...(updatedVehicles[index].vinList || [])];
-                                            vinList[vinIndex] = e.target.value;
-                                            updatedVehicles[index] = {
-                                                ...updatedVehicles[index],
-                                                vinList,
-                                                vin: (vinList[0] || "").trim(),
-                                            };
-                                            updateFormField("vehicles", updatedVehicles, ["vehicles", index, "vinList", vinIndex]);
+            {vehicles.map((item, index) => {
+                if (!isZeroKm && index > 0) return null;
+                const configuredQuantity = Number(item.availableQuantity);
+                const manualVinFieldCount = configuredQuantity > 0 ? configuredQuantity : Math.max((item.vinList || []).length, 1);
+                const vinList = (item.vinList || []).slice(0, manualVinFieldCount);
+                const vinStats = getVinStats(vinList);
+                const filledCount = vinList.filter((vinItem) => normalizeVin(vinItem || "")).length;
+                const isVinExpanded = !!expandedVinSections[index];
+                const currentVinMode = vinEntryMode[index];
+                const mileageValue = Number(item.mileage) || 0;
+                const isMileageBelowFetched = !isZeroKm && fetchedMileage > 0 && mileageValue > 0 && mileageValue < fetchedMileage;
+
+                return (
+                    <div key={item.id || index} className="border rounded-xl p-4 mb-6 border-stroke-light">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-brand-blue mb-4">{isZeroKm ? `Vehicle #${index + 1}` : "Vehicle Detail"}</h3>
+                            {isZeroKm && index > 0 && (
+                                <div className="mb-4 text-right">
+                                    <Button
+                                        onClick={() => {
+                                            const newVehicles = vehicles.filter((_, i) => i !== index);
+                                            updateFormField("vehicles", newVehicles, ["vehicles", index]);
                                         }}
-                                        placeholder="Optional 17-character VIN"
-                                        errors={errors?.properties?.vehicles?.items?.[index]?.properties?.vinList?.items?.[vinIndex]?.errors}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    ) : null}
-                    {!isZeroKm ? <div className="border-t border-stroke-light my-6" /> : null}
-                    {!isZeroKm ? (
-                        <div>
-                            <div className="flex gap-2 text-sm items-center">
-                                <Shield className="w-3.5 h-3.5" />
-                                Inspection Report
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1">Optional: upload a vehicle inspection report (PDF only, max 10MB)</p>
-                        </div>
-                    ) : null}
-                    {!isZeroKm && item.inspectionReportUrl ? (
-                        <div className="border border-gray-300 rounded-lg p-4 bg-green-50 mt-4">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                    <div className="p-2 bg-green-100 rounded">
-                                        <FileIcon className="h-5 w-5 text-green-600" />
-                                    </div>
-                                    <div>
-                                        <p className="font-medium text-brand-blue">{item.inspectionReportUrl.split("/").at(-1)}</p>
-                                        <p className="text-xs text-muted-foreground">Inspection report uploaded successfully</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Button
-                                        onClick={() => downloadFile(item.inspectionReportUrl)}
-                                        leftIcon={<EyeIcon className="h-4 w-4" />}
-                                        variant="secondary"
-                                        className="px-2 bg-transparent font-normal py-1.5"
-                                        type="button">
-                                        View
-                                    </Button>
-                                    <Button
-                                        onClick={() => removeFile(index)}
                                         variant="danger"
                                         type="button"
                                         className="bg-transparent hover:bg-destructive/10 text-destructive"
-                                        leftIcon={<CloseIcon />}
+                                        leftIcon={<CloseIcon />}>
+                                        Remove Vehicle
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {isZeroKm ? (
+                                <>
+                                    <Select
+                                        label="Color"
+                                        required
+                                        name="color"
+                                        options={colorOptions}
+                                        value={item.color || ""}
+                                        onChange={(value) => {
+                                            updateVehicleAt(index, (vehicle) => ({ ...vehicle, color: value }), ["vehicles", index, "color"]);
+                                        }}
+                                        placeholder="Select color"
+                                        border="bg-input-background"
+                                        labelCls="text-sm font-medium"
+                                        errors={errors?.properties?.vehicles?.items?.[index]?.properties?.color?.errors}
                                     />
+                                            <Input
+                                                label="Available Quantity (Optional)"
+                                                type="number"
+                                                name="availableQuantity"
+                                                errors={errors?.properties?.vehicles?.items?.[index]?.properties?.availableQuantity?.errors}
+                                                value={item.availableQuantity || ""}
+                                                onChange={(e) => handleVehicleInputChange(e, index)}
+                                                placeholder="e.g., 25"
+                                            />
+                                </>
+                            ) : (
+                                <>
+                                    <Input
+                                        label="Condition"
+                                        required
+                                        type="text"
+                                        name="condition"
+                                        value={formState.condition || ""}
+                                        readOnly
+                                        className="text-black"
+                                        placeholder="Grade C - Fair"
+                                    />
+                                    <Input
+                                        label="Mileage"
+                                        type="text"
+                                        name="mileage"
+                                        errors={errors?.properties?.vehicles?.items?.[index]?.properties?.mileage?.errors}
+                                        value={formatMileage(item.mileage)}
+                                        onChange={(e) => {
+                                            const digitsOnly = e.target.value.replace(/[^\d]/g, "");
+                                            const nextMileage = digitsOnly ? Number(digitsOnly) : undefined;
+                                            updateVehicleAt(
+                                                index,
+                                                (vehicle) => ({
+                                                    ...vehicle,
+                                                    mileage: nextMileage,
+                                                }),
+                                                ["vehicles", index, "mileage"]
+                                            );
+                                        }}
+                                        className="text-gray-900"
+                                        placeholder="55,000 kms"
+                                        required
+                                    />
+                                </>
+                            )}
+                            {!isZeroKm ? (
+                                <Input
+                                    label="VIN"
+                                    type="text"
+                                    name="vin"
+                                    errors={errors?.properties?.vehicles?.items?.[index]?.properties?.vin?.errors}
+                                    value={item.vin || formState.vin || ""}
+                                    disabled
+                                    className="text-gray-900 disabled:text-gray-900 disabled:opacity-100"
+                                    placeholder="17-character VIN"
+                                    required
+                                />
+                            ) : null}
+                            {!isZeroKm ? (
+                                <>
+                                    <Input
+                                        required
+                                        label="Number of Owners"
+                                        type="number"
+                                        name="numberOfOwners"
+                                        errors={errors?.properties?.vehicles?.items?.[index]?.properties?.numberOfOwners?.errors}
+                                        value={item.numberOfOwners || ""}
+                                        onChange={(e) => handleVehicleInputChange(e, index)}
+                                        placeholder="eg. 2"
+                                    />
+                                    <Input
+                                        label="Warranty Remaining"
+                                        type="text"
+                                        name="warrantyRemaining"
+                                        errors={errors?.properties?.vehicles?.items?.[index]?.properties?.warrantyRemaining?.errors}
+                                        value={item.warrantyRemaining || ""}
+                                        onChange={(e) => handleVehicleInputChange(e, index)}
+                                        placeholder="e.g., 2 years, Expired"
+                                    />
+                                </>
+                            ) : null}
+                        </div>
+                        {isMileageBelowFetched ? (
+                            <p className="mt-3 text-xs text-amber-700">Entered mileage is lower than the fetched Chaboschi mileage of {fetchedMileage.toLocaleString()} kms.</p>
+                        ) : null}
+                        {!isZeroKm && fetchedMileage > 0 ? <p className="mt-3 text-xs text-muted-foreground">Fetched mileage: {fetchedMileage.toLocaleString()} kms. You can only increase this value.</p> : null}
+
+                        {isZeroKm ? (
+                            <>
+                                <div className="mt-6 rounded-xl border border-stroke-light p-4">
+                                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                        <div>
+                                            <h4 className="text-sm font-medium text-brand-blue">VINs added: {filledCount} / {configuredQuantity > 0 ? configuredQuantity : "Not set"} (Optional)</h4>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                {vinStats.valid} valid, {vinStats.duplicate} duplicate, {vinStats.invalid} invalid
+                                            </p>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                className="border-brand-blue"
+                                                onClick={() => {
+                                                    setExpandedVinSections((prev) => ({ ...prev, [index]: true }));
+                                                    setVinEntryMode((prev) => ({ ...prev, [index]: "paste" }));
+                                                }}>
+                                                Paste VINs
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                className="border-brand-blue"
+                                                onClick={() => {
+                                                    setExpandedVinSections((prev) => ({ ...prev, [index]: true }));
+                                                    setVinEntryMode((prev) => ({ ...prev, [index]: "manual" }));
+                                                }}>
+                                                Add one by one
+                                            </Button>
+                                            {isVinExpanded ? (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    onClick={() => {
+                                                        setExpandedVinSections((prev) => ({ ...prev, [index]: false }));
+                                                        setVinEntryMode((prev) => ({ ...prev, [index]: null }));
+                                                    }}>
+                                                    Collapse
+                                                </Button>
+                                            ) : null}
+                                        </div>
+                                    </div>
+
+                                    {isVinExpanded && currentVinMode === "paste" ? (
+                                        <div className="mt-4 grid gap-4">
+                                            <Input
+                                                label="Paste VINs"
+                                                type="textarea"
+                                                rows={5}
+                                                value={vinPasteValues[index] || ""}
+                                                onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setVinPasteValues((prev) => ({ ...prev, [index]: e.target.value }))}
+                                                placeholder="Paste one VIN per line, or separate by comma / space"
+                                            />
+                                            <div className="flex items-center gap-2">
+                                                <Button type="button" variant="primary" onClick={() => applyPastedVins(index)}>
+                                                    Apply VINs
+                                                </Button>
+                                                <span className="text-xs text-muted-foreground">Extra VINs beyond quantity are ignored.</span>
+                                            </div>
+                                        </div>
+                                    ) : null}
+
+                                    {isVinExpanded && currentVinMode === "manual" ? (
+                                        <div className="mt-4">
+                                            {configuredQuantity > 0 ? null : (
+                                                <div className="mb-3 flex justify-end">
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        className="border-brand-blue"
+                                                        onClick={() => {
+                                                            updateVehicleAt(index, (vehicle) => ({
+                                                                ...vehicle,
+                                                                vinList: [...(vehicle.vinList || []), ""],
+                                                            }));
+                                                        }}>
+                                                        Add VIN Field
+                                                    </Button>
+                                                </div>
+                                            )}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            {Array.from({ length: manualVinFieldCount }).map((_, vinIndex) => {
+                                                const currentVin = vinList[vinIndex] || "";
+                                                const normalized = normalizeVin(currentVin);
+                                                const isDuplicateAcrossRows = !!normalized && (globalZeroKmVinCounts.get(normalized) ?? 0) > 1;
+                                                const manualErrors = [
+                                                    ...(errors?.properties?.vehicles?.items?.[index]?.properties?.vinList?.items?.[vinIndex]?.errors || []),
+                                                    ...(isDuplicateAcrossRows ? ["This VIN has already been added"] : []),
+                                                ];
+
+                                                return (
+                                                    <Input
+                                                        key={`vin-${index}-${vinIndex}`}
+                                                        label={`VIN ${vinIndex + 1}`}
+                                                        type="text"
+                                                        name={`vinList-${vinIndex}`}
+                                                        value={currentVin}
+                                                        onChange={(e) => {
+                                                            updateVehicleAt(
+                                                                index,
+                                                                (vehicle) => {
+                                                                    const nextVinList = [...(vehicle.vinList || Array.from({ length: manualVinFieldCount }, () => ""))];
+                                                                    nextVinList[vinIndex] = normalizeVin(e.target.value);
+                                                                    return {
+                                                                        ...vehicle,
+                                                                        vinList: nextVinList,
+                                                                        vin: normalizeVin(nextVinList[0] || ""),
+                                                                    };
+                                                                },
+                                                                ["vehicles", index, "vinList", vinIndex]
+                                                            );
+                                                        }}
+                                                        placeholder="Optional 17-character VIN"
+                                                        errors={manualErrors}
+                                                    />
+                                                );
+                                            })}
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </>
+                        ) : null}
+
+                        {!isZeroKm ? <div className="border-t border-stroke-light my-6" /> : null}
+                        {!isZeroKm && formState.vinLookupStatus === "not_found" ? (
+                            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                                <div className="flex items-start gap-2">
+                                    <AlertCircleIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <div>
+                                        <p className="font-medium">No inspection details were retrieved from Chaboschi.</p>
+                                        <p className="mt-1 text-xs">Continue with manual entry.</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ) : !isZeroKm ? (
-                        <label className="text-center block p-6 border-2 mt-4 border-dashed border-muted rounded-lg hover:bg-blue-50 hover:border-black">
-                            <UploadIcon className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-                            <p className="text-muted-foreground mb-2">Click to upload inspection report</p>
-                            <p className="text-xs text-muted-foreground">PDF format only (max 10MB)</p>
-                            <input name="inspectionReportUrl" type="file" onChange={(e) => handleFileUpload(e, index)} className="sr-only" accept=".pdf" />
-                        </label>
-                    ) : null}
-
-                    {!isZeroKm &&
-                        errors?.properties?.vehicles?.items?.[index]?.properties?.inspectionReportUrl?.errors?.map((err: string) => (
-                        <span key={err} className="text-xs text-destructive mt-1 block">
-                            {err}
-                        </span>
-                    ))}
-                </div>
-            ))}
+                        ) : null}
+                        {!isZeroKm && formState.vinLookupStatus === "found" && formState.inspectionSummary ? (
+                            <div className="mt-4 rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-5 shadow-sm">
+                                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                                    <Shield className="h-4 w-4" />
+                                    Inspection Summary
+                                </div>
+                                <div className="mt-4 grid gap-4 md:grid-cols-[1.3fr_0.9fr]">
+                                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                                        <p className="text-sm font-semibold text-slate-900">Inspection Conclusion</p>
+                                        <div className="mt-3 space-y-2">
+                                            {formState.inspectionSummary.split("\n").filter(Boolean).map((line) => (
+                                                <div key={line} className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                                                    {line}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-800">
+                                        <p className="font-semibold text-slate-900">Inspection Metadata</p>
+                                        <p className="mt-3"><span className="font-medium">Inspection Provider:</span> {formState.inspectionProvider}</p>
+                                        <p className="mt-2"><span className="font-medium">Inspection Date:</span> {formState.inspectionDateNote}</p>
+                                    </div>
+                                    <div className="rounded-lg border border-slate-200 bg-white p-4 md:col-span-2">
+                                        <p className="text-sm font-semibold text-slate-900">Vehicle Description</p>
+                                        <p className="mt-2 text-sm leading-6 text-slate-700">{formState.vehicleDescription}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : null}
+                    </div>
+                );
+            })}
             <div className="pt-6 border-t border-stroke-light">
                 <div className="flex space-x-3 justify-between">
                     <button

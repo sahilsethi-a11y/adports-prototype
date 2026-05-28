@@ -2,15 +2,24 @@
 
 import { useRef } from "react";
 import { formatPrice } from "@/lib/utils";
+import type { NegotiationIncoterm } from "./NegotiationQuotePanelLocal";
 
 type ActiveProposal = {
+  requestForQuote?: boolean;
+  rfqResponse?: boolean;
+  quotationCancelled?: boolean;
+  cancellationReason?: string;
   discountPercent: number;
   discountAmount: number;
   finalPrice: number;
+  incoterm: NegotiationIncoterm;
   downpaymentPercent: number;
   downpaymentAmount: number;
   remainingBalance: number;
   selectedPort: string;
+  orderPreparationTimeline?: string;
+  expectedDeliveryDate?: string;
+  offerValidity?: string;
   submittedAt: string;
   status?: "buyer_proposed" | "seller_countered" | "buyer_countered" | "seller_accepted";
   bucketName: string;
@@ -20,6 +29,10 @@ type ActiveProposal = {
     name: string;
     total: number;
     discountPercent: number;
+    totalUnits?: number;
+    unitPrice?: number;
+    currency?: string;
+    color?: string;
   }>;
 };
 
@@ -50,6 +63,19 @@ export default function YourProposalSummary({ proposal, currency, role, onFinalP
   })();
 
   const infoMessage = (() => {
+    if (proposal.quotationCancelled) {
+      return `Quotation cancelled. Reason: ${proposal.cancellationReason || "Not specified"}.`;
+    }
+    if (proposal.requestForQuote) {
+      return isBuyer
+        ? "Your quote request has been submitted. The seller will respond with a quotation."
+        : "Buyer requested a quote. Review the request and respond with your quotation.";
+    }
+    if (proposal.rfqResponse) {
+      return isBuyer
+        ? "Seller has provided a quotation. Review the quoted quantities, incoterm, and commercial terms."
+        : "Your quotation has been sent. The buyer can now review the offered quantities and terms.";
+    }
     if (proposal.status === "seller_countered") {
       return isBuyer
         ? "Seller has responded with a counter. Review details in the conversation."
@@ -76,6 +102,7 @@ export default function YourProposalSummary({ proposal, currency, role, onFinalP
       <h3 className="text-sm font-semibold text-gray-900 mb-4">Your Proposal</h3>
 
       {/* Discount Applied Section */}
+      {!proposal.requestForQuote && !proposal.rfqResponse && !proposal.quotationCancelled ? (
       <div className="mb-5 p-3 bg-green-50 border border-green-200 rounded-lg">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-lg">✓</span>
@@ -108,6 +135,7 @@ export default function YourProposalSummary({ proposal, currency, role, onFinalP
           })}
         </div>
       </div>
+      ) : null}
 
       {/* Price Summary Box */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-5 space-y-2">
@@ -115,12 +143,14 @@ export default function YourProposalSummary({ proposal, currency, role, onFinalP
           <span className="text-gray-700">Original Price:</span>
           <span className="font-medium text-gray-900">{formatPrice(proposal.bucketTotal, currency)}</span>
         </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-700">Discount Amount:</span>
-          <span className="font-medium text-red-600">-${Math.round(proposal.discountAmount).toLocaleString()}</span>
-        </div>
+        {!proposal.requestForQuote && !proposal.rfqResponse && !proposal.quotationCancelled ? (
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-700">Discount Amount:</span>
+            <span className="font-medium text-red-600">-${Math.round(proposal.discountAmount).toLocaleString()}</span>
+          </div>
+        ) : null}
         <div className="border-t border-blue-200 pt-2 flex justify-between text-sm font-semibold">
-          <span className="text-gray-900">Final Price:</span>
+          <span className="text-gray-900">{proposal.requestForQuote ? "Requested Quote Basis:" : proposal.rfqResponse ? "Quoted Total:" : "Final Price:"}</span>
           <span
             className="text-brand-blue text-lg"
             onDoubleClick={onFinalPriceDoubleTap}
@@ -139,6 +169,7 @@ export default function YourProposalSummary({ proposal, currency, role, onFinalP
       </div>
 
       {/* Payment Summary Section */}
+      {!proposal.requestForQuote && !proposal.quotationCancelled ? (
       <div className="mb-5">
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs font-medium text-gray-700">Payment Terms</label>
@@ -154,12 +185,31 @@ export default function YourProposalSummary({ proposal, currency, role, onFinalP
           </div>
         </div>
       </div>
+      ) : null}
 
       {/* Port of Loading */}
       <div className="mb-5 p-3 bg-gray-50 rounded-lg">
-        <p className="text-xs font-medium text-gray-700 mb-1">Port of Loading</p>
+        <p className="text-xs font-medium text-gray-700 mb-1">{proposal.incoterm === "CIF" ? "Port of Destination" : "Port of Loading"}</p>
         <p className="text-sm font-semibold text-gray-900">{proposal.selectedPort}</p>
+        <p className="text-xs text-gray-500 mt-1">Incoterm: {proposal.incoterm}</p>
       </div>
+
+      {proposal.rfqResponse && !proposal.quotationCancelled ? (
+        <div className="mb-5 p-3 bg-gray-50 rounded-lg space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Order preparation timeline:</span>
+            <span className="font-semibold text-gray-900">{proposal.orderPreparationTimeline || "—"}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Expected delivery date:</span>
+            <span className="font-semibold text-gray-900">{proposal.expectedDeliveryDate || "—"}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Offer validity:</span>
+            <span className="font-semibold text-gray-900">{proposal.offerValidity || "—"}</span>
+          </div>
+        </div>
+      ) : null}
 
       {/* Status Message */}
       <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">

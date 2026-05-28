@@ -1,8 +1,7 @@
-import VehicleForm, { FormState } from "@/components/add-vehicle/VehicleForm";
+import VehicleForm from "@/components/add-vehicle/VehicleForm";
 import { ArrowLeftIcon } from "@/components/Icons";
 import Link from "next/link";
 import { getBrands, getFilters } from "@/lib/data";
-import { api } from "@/lib/api/server-request";
 import { MarketType } from "@/validation/vehicle-schema";
 
 const data = {
@@ -16,23 +15,16 @@ export default async function AddVehicle({
     const { id, step, marketType } = await searchParams;
     const initialMarketType = marketType === MarketType.ZERO_KM ? MarketType.ZERO_KM : MarketType.SECOND_HAND;
 
-    const res = api.get<{ data: FormState }>("/inventory/api/v1/inventory/getInventoryById", {
-        params: {
-            vehicleId: id,
-        },
-    });
-
     const brandRes = getBrands();
     const filterRes = getFilters();
-    const resArr = await Promise.allSettled([brandRes, filterRes, ...(id ? [res] : [])]);
+    const resArr = await Promise.allSettled([brandRes, filterRes]);
     const brandData = resArr[0].status === "fulfilled" ? resArr[0].value : null;
     const filterData = resArr[1].status === "fulfilled" ? resArr[1].value : null;
-    const data = resArr[2]?.status === "fulfilled" ? resArr[2].value : null;
 
     return (
         <main>
             <div className="container mx-auto px-4 py-8 max-w-4xl">
-                <VehicleForm step={step} topSection={<TopSection />} filterData={filterData?.data} intialData={data?.data} brands={brandData?.data} initialMarketType={initialMarketType} />
+                <VehicleForm step={step} topSection={<TopSection />} filterData={filterData?.data} listingId={id} brands={brandData?.data} initialMarketType={initialMarketType} />
             </div>
         </main>
     );

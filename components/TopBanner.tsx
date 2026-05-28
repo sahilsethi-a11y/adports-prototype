@@ -4,15 +4,16 @@ type PropsT = {
     image: string;
     children?: React.ReactNode;
     verticalCenter?: boolean;
+    overlay?: string;
 };
 
 export default function TopBanner(props: Readonly<PropsT>) {
-    const { verticalCenter } = props;
+    const { verticalCenter, overlay = "rgba(0,0,0,0.6)" } = props;
     return (
         <div
             className="relative h-screen w-full bg-cover bg-center bg-no-repeat"
             style={{
-                backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url(${props.image})`,
+                backgroundImage: `linear-gradient(${overlay}, ${overlay}), url(${props.image})`,
             }}>
             <div className={`flex justify-center text-white ${verticalCenter ? "h-full items-center" : "pt-[10vh] items-start"}`}>
                 <div className="text-center max-w-4xl px-4">

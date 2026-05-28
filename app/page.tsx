@@ -129,17 +129,19 @@ export default async function Home({ searchParams }: Readonly<PageProps<"/">>) {
                   title: "Find Your Perfect Second-Hand Vehicle",
                   subTitle: "Browse verified pre-owned vehicles from trusted dealers.",
               };
+    const bannerOverlay = marketMode === "zero_km" ? "rgba(16,40,72,0.62)" : "rgba(16,24,40,0.64)";
     const brandRes = getBrands().catch(() => ({ data: [] }));
     const filterRes = getFilters().catch(() => ({ data: {} }));
 
     return (
         <main className="bg-white relative size-full">
-            <TopBanner title={data.topBanner.title} description={data.topBanner.description} image={data.topBanner.image} />
+            <TopBanner title={data.topBanner.title} description={data.topBanner.description} image={data.topBanner.image} overlay={bannerOverlay}>
+                <div className="mx-auto mt-8 w-full max-w-xl px-2">
+                    <MarketplaceSwitch mode={marketMode} compact designType="hero-revamp" />
+                </div>
+            </TopBanner>
             <section className="relative -mt-[calc(15rem+12vh)] lg:-mt-[calc(16rem+14vh)] lg:px-4 mb-40">
                 <div className="container mx-auto max-w-6xl px-4">
-                    <div className="mb-3">
-                        <MarketplaceSwitch mode={marketMode} compact className="max-w-sm" />
-                    </div>
                     <Suspense>
                         <FilterBar
                             brandRes={brandRes}

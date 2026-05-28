@@ -14,6 +14,7 @@ import QRShare from "@/components/vehicle-details/QRShare";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import PriceBadge from "@/elements/PriceBadge";
+import IndicativePriceBadge from "@/components/vehicle-details/IndicativePriceBadge";
 import Select from "@/elements/Select";
 import message from "@/elements/message";
 import type { BucketMeta } from "@/lib/bucketCache";
@@ -421,6 +422,7 @@ function UnitCardRow({
           <div className="shrink-0 text-right">
             <div className="text-base font-semibold flex gap-1 items-center text-gray-900 whitespace-nowrap leading-none">
               {price} <PriceBadge />
+              {marketMode === "zero_km" ? <IndicativePriceBadge /> : null}
             </div>
           </div>
         </div>
@@ -1210,6 +1212,7 @@ export default function VehicleCardListing({
                   <div className="shrink-0 text-right">
                     <div className="text-lg font-semibold flex gap-1 items-center text-gray-900 whitespace-nowrap leading-none">
                       {priceRangeText(activeBucket)} <PriceBadge />
+                      {marketMode === "zero_km" ? <IndicativePriceBadge /> : null}
                     </div>
                     <div className="text-[11px] text-gray-500 mt-1">Price range</div>
                   </div>

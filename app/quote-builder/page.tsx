@@ -5,7 +5,6 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LOCAL_AUTH_STORAGE_KEY, type LocalAuthUser } from "@/lib/localAuth";
 import { getClientMarketMode, MARKET_MODE_STORAGE_KEY, normalizeMarketMode, scopedStorageKey, type MarketMode } from "@/lib/marketplace";
-import MarketplaceSwitch from "@/components/MarketplaceSwitch";
 
 export default function QuoteBuilderPage() {
     return (
@@ -94,7 +93,6 @@ function QuoteBuilderPageContent() {
                 <div className="mb-4">
                     <h1 className="text-3xl text-brand-blue">Quote Builder</h1>
                 </div>
-                <MarketplaceSwitch mode={marketMode} compact className="mb-6 max-w-sm" />
                 <div className="flex justify-center">
                     <div className="p-4 border rounded-2xl border-stroke-light">
                         Quote Builder is available for logged-in buyers only.
@@ -111,7 +109,6 @@ function QuoteBuilderPageContent() {
                     Quote Builder ({marketMode === "zero_km" ? "Zero KM" : "Second-Hand"})
                 </h1>
             </div>
-            <MarketplaceSwitch mode={marketMode} compact className="mb-6 max-w-sm" />
             <QuoteBuilderList list={items} marketMode={marketMode} />
         </main>
     );

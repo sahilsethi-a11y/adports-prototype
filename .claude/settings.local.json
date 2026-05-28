@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(git commit -m 'feat: 7-step single listing flow + bulk upload with spec fields, image step, and Chaboschi enrichment *)"
+    ]
+  }
+}

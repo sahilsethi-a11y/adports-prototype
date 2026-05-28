@@ -26,6 +26,7 @@ export default function NegotiatePriceButton({
     const [loading, setLoading] = useState(false);
     const [disabled, setDisabled] = useState(false);
     const pathname = usePathname();
+    const currentMarketMode = getClientMarketMode();
 
     const createConversationId = (buyerId: string, marketMode: string) => {
         if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -117,9 +118,8 @@ export default function NegotiatePriceButton({
     };
 
     return (
-        <Button variant="outline" disabled={disabled} className="w-full" loading={loading} onClick={() => handleNegotiatePrice()}>
-            <MessageSquareIcon className="w-4 h-4 mr-2" />
-            Start quotation
+        <Button variant="outline" disabled={disabled} className="w-full" loading={loading} onClick={() => handleNegotiatePrice()} leftIcon={<MessageSquareIcon className="w-4 h-4" />}>
+            {currentMarketMode === "zero_km" ? "Start RFQ" : "Start quotation"}
         </Button>
     );
 }

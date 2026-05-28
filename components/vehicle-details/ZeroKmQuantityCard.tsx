@@ -63,7 +63,6 @@ const colorHexMap: Record<string, string> = {
 const getColorHex = (color: string) => colorHexMap[color.toLowerCase().trim()] || "#8a93a3";
 
 export default function ZeroKmQuantityCard(props: Readonly<Props>) {
-    const maxUnits = Math.max(1, props.availableUnits || 1);
     const colorOptions = (props.colorOptions && props.colorOptions.length ? props.colorOptions : [props.color].filter(Boolean)) as string[];
     const defaultColor = colorOptions[0] || props.color || "White";
     const [selectedColors, setSelectedColors] = useState<string[]>([defaultColor]);
@@ -81,7 +80,7 @@ export default function ZeroKmQuantityCard(props: Readonly<Props>) {
     const updateQty = (color: string, delta: number) => {
         setQuantitiesByColor((prev) => {
             const current = Math.max(1, prev[color] || 1);
-            return { ...prev, [color]: Math.max(1, Math.min(maxUnits, current + delta)) };
+            return { ...prev, [color]: Math.max(1, current + delta) };
         });
     };
 
@@ -222,7 +221,6 @@ export default function ZeroKmQuantityCard(props: Readonly<Props>) {
                 <span className="ml-3">
                     Total units: <span className="font-semibold">{selectedEntries.reduce((sum, entry) => sum + entry.quantity, 0)}</span>
                 </span>
-                <span className="ml-3 text-gray-500">Max per color: {maxUnits}</span>
             </div>
             <div className="space-y-2 mb-5 max-h-64 overflow-y-auto pr-1">
                 {colorOptions.map((color) => {

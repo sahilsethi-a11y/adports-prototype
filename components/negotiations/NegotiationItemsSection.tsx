@@ -3,7 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import type { QuoteItem } from "@/components/buyer/QuoteBuilderList";
 import NegotiationBucketCard from "./NegotiationBucketCard";
+import { getDefaultRfqLineResponse, type RfqLineResponse } from "./NegotiationQuotePanelLocal";
 import { scopedStorageKey, type MarketMode } from "@/lib/marketplace";
+
+export type RfqResponseSummary = {
+  totalUnits: number;
+  unitPrice: number;
+  total: number;
+  currency?: string;
+};
 
 type NegotiationBucket = {
   key: string;
@@ -35,14 +43,42 @@ type Props = {
   isLocked?: boolean;
   conversationId?: string;
   marketMode: MarketMode;
+  isSellerRfqResponseMode?: boolean;
+  rfqLineResponses?: Record<string, RfqLineResponse>;
+  onRfqLineResponsesChange?: (value: Record<string, RfqLineResponse>) => void;
+  rfqResponseSummaries?: Record<string, RfqResponseSummary>;
+  isPerColorNegotiationMode?: boolean;
 };
 
-// Bucket grouping function - groups items by their pre-computed bucketKey
+// One card per car (brand + model + variant + year + seller).
+// Color is intentionally excluded from the key — different colors of the
+// same car belong in the same card and appear as sub-cards inside it.
+//
+// NOTE: We group by car identity whenever brand+model are present, regardless
+// of marketType. Seller-side items are injected from proposal bucketSummaries
+// (NegotiationClientWrapper line ~355) with brand/model/variant/year set but
+// without marketType, so we cannot rely solely on the zero_km branch.
+const buildNegotiationBucketKey = (item: QuoteItem) => {
+  if (item.marketType === "zero_km") {
+    return [
+      item.sellerId || "",
+      item.brand || item.name,
+      item.model || "",
+      item.variant || "",
+      item.year || "",
+    ].join("|");
+  }
+
+  return item.bucketKey || String(item.id || item.name || "");
+};
+
+// Bucket grouping function - groups items by car identity, preserving each
+// color entry individually so sub-cards can render them separately.
 const buildBucketGroups = (items: QuoteItem[]): NegotiationBucket[] => {
   const map = new Map<string, NegotiationBucket>();
 
   for (const item of items) {
-    const key = item.bucketKey; // Use pre-computed key
+    const key = buildNegotiationBucketKey(item);
     const existing = map.get(key);
 
     if (!existing) {
@@ -66,10 +102,11 @@ const buildBucketGroups = (items: QuoteItem[]): NegotiationBucket[] => {
         items: [item],
       });
     } else {
-      // Aggregate quantities and totals
+      // Aggregate totals across all color variants
       existing.unitCount += item.quantity;
       existing.bucketTotal += item.quantity * item.price;
-      existing.items.push(item);
+      existing.items.push(item); // each color stays as its own entry for sub-cards
+      existing.unitPrice = existing.bucketTotal / existing.unitCount;
     }
   }
 
@@ -86,6 +123,11 @@ export default function NegotiationItemsSection({
   isLocked,
   conversationId,
   marketMode,
+  isSellerRfqResponseMode,
+  rfqLineResponses,
+  onRfqLineResponsesChange,
+  rfqResponseSummaries,
+  isPerColorNegotiationMode,
 }: Props) {
   const [items, setItems] = useState<QuoteItem[]>([]);
 
@@ -111,7 +153,10 @@ export default function NegotiationItemsSection({
 
     // Listen to storage changes from other tabs
     const onStorage = (e: StorageEvent) => {
-      if (e.key === scopedStorageKey("quoteBuilderItems", marketMode) || e.key === (conversationId ? `negotiationItems_${conversationId}` : "")) {
+      if (
+        e.key === scopedStorageKey("quoteBuilderItems", marketMode) ||
+        e.key === (conversationId ? `negotiationItems_${conversationId}` : "")
+      ) {
         loadItems();
       }
     };
@@ -156,9 +201,28 @@ export default function NegotiationItemsSection({
             key={bucket.key}
             bucket={bucket}
             discountPercent={bucketDiscounts[bucket.key] ?? 0}
+            discountPercents={bucketDiscounts}
             showDiscountControls={canEditDiscounts ?? isBuyer === true}
             onDiscountChange={(value) => onBucketDiscountChange(bucket.key, value)}
+            onItemDiscountChange={(itemKey, value) => onBucketDiscountChange(itemKey, value)}
             isLocked={isLocked}
+            isSellerRfqResponseMode={isSellerRfqResponseMode}
+            rfqLineResponses={rfqLineResponses}
+            rfqResponseSummaries={rfqResponseSummaries}
+            isPerColorNegotiationMode={isPerColorNegotiationMode}
+            onRfqLineResponseChange={(item, next) => {
+              onRfqLineResponsesChange?.({
+                ...(rfqLineResponses || {}),
+                [item.lineKey || `${item.id}-${item.color || "default"}`]:
+                  typeof next === "function"
+                    ? next(
+                        (rfqLineResponses || {})[
+                          item.lineKey || `${item.id}-${item.color || "default"}`
+                        ] || getDefaultRfqLineResponse(item)
+                      )
+                    : next,
+              });
+            }}
           />
         ))}
       </div>

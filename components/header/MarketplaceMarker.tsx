@@ -1,8 +1,8 @@
 "use client";
 
-import { MARKET_MODE_COOKIE_KEY, MARKET_MODE_STORAGE_KEY, normalizeMarketMode, type MarketMode } from "@/lib/marketplace";
+import { MARKET_MODE_COOKIE_KEY, MARKET_MODE_STORAGE_KEY, normalizeMarketMode, setClientMarketMode, type MarketMode } from "@/lib/marketplace";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type MarketplaceMarkerProps = {
     initialMode: MarketMode;
@@ -10,6 +10,8 @@ type MarketplaceMarkerProps = {
 };
 
 export default function MarketplaceMarker({ initialMode, className }: Readonly<MarketplaceMarkerProps>) {
+    const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
     const queryMode = searchParams.get("market");
     const [mode, setMode] = useState<MarketMode>(initialMode);
@@ -40,11 +42,36 @@ export default function MarketplaceMarker({ initialMode, className }: Readonly<M
         };
     }, [queryMode, initialMode]);
 
-    const marketLabel = normalizeMarketMode(mode) === "zero_km" ? "Zero KM" : "Second-Hand";
+    const currentMode = normalizeMarketMode(mode);
+
+    const switchMode = (next: MarketMode) => {
+        if (next === currentMode) return;
+        const sp = new URLSearchParams(searchParams.toString());
+        sp.set("market", next);
+        setClientMarketMode(next);
+        router.push(`${pathname}?${sp.toString()}`);
+    };
+
+    if (pathname === "/") return null;
 
     return (
-        <span className={`hidden md:inline-flex items-center rounded-full border border-brand-blue/20 bg-brand-blue/5 px-3 py-1 text-xs font-medium text-brand-blue whitespace-nowrap ${className ?? ""}`}>
-            Marketplace: {marketLabel}
-        </span>
+        <div className={`hidden md:inline-flex items-center rounded-full border border-stroke-light bg-white p-1 ${className ?? ""}`}>
+            <button
+                type="button"
+                onClick={() => switchMode("second_hand")}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                    currentMode === "second_hand" ? "bg-brand-blue text-white" : "text-brand-blue hover:bg-brand-blue/10"
+                }`}>
+                Second-Hand
+            </button>
+            <button
+                type="button"
+                onClick={() => switchMode("zero_km")}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                    currentMode === "zero_km" ? "bg-brand-blue text-white" : "text-brand-blue hover:bg-brand-blue/10"
+                }`}>
+                Zero KM
+            </button>
+        </div>
     );
 }

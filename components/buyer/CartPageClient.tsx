@@ -78,6 +78,17 @@ export default function CartPageClient({ list, marketMode }: Readonly<{ list: Ca
     }) => {
         try {
             setCheckoutLoading(true);
+            const selectedConversationIds = payload.negotiationOrders.map((o) => o.conversationId);
+            for (const order of payload.negotiationOrders) {
+                await fetch("/api/negotiation-orders", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        conversationId: order.conversationId,
+                        orderPayload: order,
+                    }),
+                });
+            }
             if (typeof window !== "undefined") {
                 const raw = window.localStorage.getItem(NEGOTIATION_CARTS_LOCAL_KEY);
                 const map = raw ? (JSON.parse(raw) as Record<string, NegotiationCart>) : {};
@@ -90,7 +101,11 @@ export default function CartPageClient({ list, marketMode }: Readonly<{ list: Ca
             setNegotiationOrders((prev) =>
                 prev.filter((o) => !payload.negotiationOrders.some((x) => x.conversationId === o.conversationId))
             );
-            router.push("/buyer/orders");
+            if (selectedConversationIds.length) {
+                router.push(`/buyer/orders/${selectedConversationIds[0]}`);
+            } else {
+                router.push("/buyer/orders");
+            }
         } catch {
             message.error("Local checkout failed.");
         } finally {

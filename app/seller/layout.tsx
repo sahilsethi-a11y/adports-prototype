@@ -1,5 +1,8 @@
+"use client";
+
 import QuickActions from "@/components/seller/QuickActions";
 import Tabs from "@/components/Tabs";
+import { usePathname } from "next/navigation";
 const data = {
     title: " Seller Dashboard",
     description: "Manage your vehicle listings and track your sales.",
@@ -16,16 +19,23 @@ export default function SellerLayout({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    const pathname = usePathname();
+    const hideTabsAndHeader = /^\/seller\/orders\/[^/]+$/.test(pathname || "");
+
     return (
         <main className="container mx-auto px-4 py-8">
-            <div className="flex justify-between items-start mb-8 flex-wrap gap-4">
-                <div>
-                    <h1 className="text-3xl font-medium">{data.title}</h1>
-                    <p className="text-gray-600">{data.description}</p>
-                </div>
-                <QuickActions />
-            </div>
-            <Tabs tabs={data.tabs} />
+            {!hideTabsAndHeader ? (
+                <>
+                    <div className="flex justify-between items-start mb-8 flex-wrap gap-4">
+                        <div>
+                            <h1 className="text-3xl font-medium">{data.title}</h1>
+                            <p className="text-gray-600">{data.description}</p>
+                        </div>
+                        <QuickActions />
+                    </div>
+                    <Tabs tabs={data.tabs} />
+                </>
+            ) : null}
             {children}
         </main>
     );
